@@ -1,0 +1,120 @@
+{% extends "layout/base.html" %}
+{% block title %}历史记录详情{% endblock %}
+
+{% block content %}
+  <div class="breadcrumb">
+    <a href="{{ url_for('web.generation_history_list') }}">历史记录</a>
+    <span class="breadcrumb-sep">/</span>
+    <span>详情</span>
+  </div>
+
+  <div id="gh-loading" class="card">
+    <p class="muted">加载中…</p>
+  </div>
+
+  <div id="gh-not-found" class="card error" hidden>
+    <p>记录不存在。</p>
+    <p><a class="button" href="{{ url_for('web.generation_history_list') }}">返回列表</a></p>
+  </div>
+
+  <div id="gh-found" hidden>
+    <div class="card">
+      <div class="section-head">
+        <div>
+          <h2 style="margin: 0;">生成详情</h2>
+          <p class="muted gh-meta-line" style="margin: 8px 0 0;"></p>
+        </div>
+        <div class="ct-detail-actions">
+          <a class="button secondary" href="{{ url_for('web.generation_history_list') }}">返回</a>
+          <button type="button" class="button" id="gh-btn-download">下载 PPT</button>
+          <button type="button" class="button secondary danger-outline" id="gh-btn-delete">删除</button>
+        </div>
+      </div>
+    </div>
+    <div id="gh-result-mount"></div>
+  </div>
+{% endblock %}
+
+{% block scripts %}
+  <script src="{{ url_for('static', filename='js/app/util.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/app/generation-history-store.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/app/generate.js') }}"></script>
+  <script>
+    (function () {
+      var recordId = {{ record_id | tojson }};
+
+      function run() {
+        var loading = document.getElementById("gh-loading");
+        var nf = document.getElementById("gh-not-found");
+        var fd = document.getElementById("gh-found");
+        if (!window.GenerationHistoryStore) {
+          if (loading) loading.hidden = true;
+          nf.hidden = false;
+          return;
+        }
+        GenerationHistoryStore.get(recordId)
+          .then(function (rec) {
+            if (loading) loading.hidden = true;
+            if (!rec) {
+              nf.hidden = false;
+              return;
+            }
+            fd.hidden = false;
+            var meta = document.querySelector(".gh-meta-line");
+            if (meta) {
+              meta.textContent =
+                "主题：" + (rec.topic || "—") + " · 模板任务：" + (rec.taskId || "—") + " · " + (rec.createdAt || "");
+            }
+
+            var mount = document.getElementById("gh-result-mount");
+            mount.innerHTML = "";
+            var inner = document.createElement("div");
+            inner.id = "ai-result-mount";
+            mount.appendChild(inner);
+            if (window.PptApp && window.PptApp.renderGenerationResult) {
+              PptApp.renderGenerationResult(rec.result, rec.taskId);
+            }
+
+            var dlRow = document.querySelector("#ai-result .download-row a");
+            if (dlRow) {
+              dlRow.addEventListener("click", function (ev) {
+                ev.preventDefault();
+                GenerationHistoryStore.downloadPptx(rec).catch(function (e) {
+                  alert(e.message || String(e));
+                });
+              });
+            }
+
+            document.getElementById("gh-btn-download").addEventListener("click", function () {
+              GenerationHistoryStore.downloadPptx(rec).catch(function (e) {
+                alert(e.message || String(e));
+              });
+            });
+
+            document.getElementById("gh-btn-delete").addEventListener("click", function () {
+              if (!confirm("确定删除？")) return;
+              GenerationHistoryStore.remove(recordId)
+                .then(function () {
+                  window.location.href = "/history";
+                })
+                .catch(function (e) {
+                  alert(e.message || String(e));
+                });
+            });
+          })
+          .catch(function (e) {
+            if (loading) loading.hidden = true;
+            nf.hidden = false;
+            var p = nf.querySelector("p");
+            if (p) p.textContent = e.message || String(e);
+          });
+      }
+
+      if (document.readyState === "loading") {
+        document.addEventListener("DOMContentLoaded", run);
+      } else {
+        run();
+      }
+    })();
+  </script>
+{% endblock %}

@@ -1,0 +1,38 @@
+<div class="card" style="margin-bottom: 18px;">
+  <div class="section-head">
+    <div>
+      <h2>模板已解析</h2>
+      <p class="muted">解析完成后，系统会自动把每页结构摘要发给大模型，识别页面类型：首页、目录、章节扉页、正文页。</p>
+    </div>
+  </div>
+  <div class="stats">
+    <div class="stat">
+      <span class="stat-label">文件名</span>
+      <span class="stat-value" id="presentation-display-name-label" style="font-size: 18px;">{{ parsed.file_name }}</span>
+    </div>
+    <div class="stat">
+      <span class="stat-label">总页数</span>
+      <span class="stat-value">{{ parsed.slide_count }}</span>
+    </div>
+  </div>
+  {% if db_enabled %}
+    <div class="presentation-display-name-edit">
+      <p class="muted" style="margin: 14px 0 6px;">显示名称仅保存在数据库，用于列表与导出提示；不会重命名服务器上的 <code>uploads/{{ task_id }}.pptx</code> 文件。</p>
+      <div class="presentation-display-name-row">
+        <input
+          type="text"
+          id="presentation-display-name-input"
+          class="select-inline presentation-display-name-input"
+          value="{{ parsed.file_name | e }}"
+          maxlength="512"
+          aria-label="模板显示名称"
+        />
+        <button type="button" class="button secondary" id="presentation-display-name-save" data-task-id="{{ task_id }}">
+          保存名称
+        </button>
+        <span class="muted presentation-rename-status" id="presentation-rename-status" role="status" hidden></span>
+      </div>
+    </div>
+  {% endif %}
+  <p class="muted" style="margin-top: 14px;">想看每页类型和判断依据，可以展开下方的“高级：查看解析详情”。</p>
+</div>

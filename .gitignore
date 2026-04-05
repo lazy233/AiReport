@@ -1,0 +1,17 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# Secrets
+.env
+
+# Local DB and uploads (runtime)
+*.sqlite
+*.sqlite3
+data/
+uploads/
+
+# Logs
+*.log

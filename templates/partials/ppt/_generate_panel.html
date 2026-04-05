@@ -1,0 +1,193 @@
+<div class="generate-form-body">
+  <form id="ai-generate-form" method="post">
+    <input type="hidden" name="action" value="generate" />
+    <input type="hidden" name="task_id" value="{{ task_id or '' }}" />
+    <div id="selected-slides-hidden" aria-hidden="true"></div>
+    <input type="hidden" name="chapter_template_id" id="gen-chapter-template-id" value="" />
+    <input type="hidden" name="student_data_id" id="gen-student-data-id" value="" />
+    <input type="hidden" name="chapter_ref_json" id="gen-chapter-ref-json" value="" />
+    <p>
+      <label>主题</label>
+      <textarea name="topic" rows="2" required placeholder="例如：开学第一课 / 学期总结 / 活动方案">{{ topic or "" }}</textarea>
+      <span class="muted"><br />必填，作为生成文档内容的主要意图说明。</span>
+    </p>
+    <div class="gen-ref-toolbar">
+      <div class="gen-ref-toolbar-row">
+        <button type="button" class="button gen-btn-pick gen-btn-pick--template" data-gen-picker="chapter-template">
+          选择章节模板
+        </button>
+        <button type="button" class="button gen-btn-pick gen-btn-pick--student" data-gen-picker="student-data">
+          选择学生数据
+        </button>
+      </div>
+    </div>
+    <div class="gen-ref-strip" id="gen-ref-picks" hidden>
+      <div class="gen-ref-strip-head">
+        <span class="gen-ref-strip-title">已选引用</span>
+        <span class="gen-ref-strip-hint muted">可与「主题」一起，为本次生成提供额外上下文</span>
+      </div>
+      <div class="gen-ref-chips" role="list">
+        <div class="gen-ref-chip gen-ref-chip--template" id="gen-ref-pick-chapter-wrap" role="listitem" hidden>
+          <span class="gen-ref-chip-badge">模板</span>
+          <div class="gen-ref-chip-main">
+            <span class="gen-ref-chip-label">章节模板</span>
+            <span class="gen-ref-chip-value" id="gen-ref-pick-chapter-label"></span>
+          </div>
+          <button
+            type="button"
+            class="gen-ref-chip-remove"
+            data-gen-clear="chapter-template"
+            aria-label="移除章节模板"
+          >
+            移除
+          </button>
+        </div>
+        <div class="gen-ref-chip gen-ref-chip--student" id="gen-ref-pick-student-wrap" role="listitem" hidden>
+          <span class="gen-ref-chip-badge">学生</span>
+          <div class="gen-ref-chip-main">
+            <span class="gen-ref-chip-label">学生数据</span>
+            <span class="gen-ref-chip-value" id="gen-ref-pick-student-label"></span>
+          </div>
+          <button
+            type="button"
+            class="gen-ref-chip-remove"
+            data-gen-clear="student-data"
+            aria-label="移除学生数据"
+          >
+            移除
+          </button>
+        </div>
+      </div>
+      <div class="gen-resolve-actions" id="gen-resolve-actions" hidden>
+        <span class="gen-resolve-spinner" id="gen-resolve-spinner" hidden aria-hidden="true"></span>
+        <button type="button" class="button gen-btn-resolve" id="gen-resolve-to-ppt">
+          解析到 PPT
+        </button>
+        <span class="muted gen-resolve-hint" id="gen-resolve-hint">
+          将章节模板中的章节名按顺序写入各「章」块，并由服务端大模型预挂学生字段（失败时自动轮询兜底）；可自行增删标签。点击后需等待服务端完成，约数十秒。
+        </span>
+      </div>
+    </div>
+    {% if chapter_groups %}
+      <div class="gen-chapter-toolbar slide-actions chapter-tabs-toolbar">
+        <button type="button" class="button gen-btn-chapter gen-btn-chapter--all" data-chapter-select="all">
+          全选纳入
+        </button>
+        <button type="button" class="button gen-btn-chapter gen-btn-chapter--none" data-chapter-select="none">
+          全部不选
+        </button>
+      </div>
+      <div class="chapter-tabs" data-chapter-tabs>
+        <div class="chapter-tabs-bar" role="tablist" aria-label="章节块">
+          {% for g in chapter_groups %}
+            <button
+              type="button"
+              class="chapter-tab-btn"
+              role="tab"
+              id="chapter-tab-{{ loop.index0 }}"
+              aria-selected="{% if loop.index0 == 0 %}true{% else %}false{% endif %}"
+              aria-controls="chapter-panel-{{ loop.index0 }}"
+              tabindex="{% if loop.index0 == 0 %}0{% else %}-1{% endif %}"
+            >
+              <span class="chapter-tab-btn-label">{{ g.label }}</span>
+              <span class="chapter-tab-btn-meta">{{ g.slides | length }} 页</span>
+            </button>
+          {% endfor %}
+        </div>
+        {% for g in chapter_groups %}
+          <div
+            class="chapter-tab-panel"
+            role="tabpanel"
+            id="chapter-panel-{{ loop.index0 }}"
+            data-panel-kind="{{ g.kind }}"
+            aria-labelledby="chapter-tab-{{ loop.index0 }}"
+            {% if loop.index0 > 0 %}hidden{% endif %}
+          >
+            <div class="chapter-tab-panel-toolbar">
+              <label class="chapter-include-label">
+                <input
+                  type="checkbox"
+                  class="group-select"
+                  data-slides="{{ g.slides | join(',') }}"
+                  data-group-kind="{{ g.kind }}"
+                  {% if g.default_selected %}checked{% endif %}
+                />
+                纳入本次生成
+              </label>
+            </div>
+            <p class="muted chapter-tab-panel-slides">
+              幻灯片页码：<strong>{{ g.slides | join("、") }}</strong>
+            </p>
+            <div class="chapter-data-slot" data-chapter-data-root>
+              <p class="muted chapter-data-nonchapter-note" data-non-chapter-note hidden>
+                本块为首页、目录或其他聚合页，不与「章节模板」中的章节逐条对应；学生字段挂载仅对下方「章」块开放。
+              </p>
+              <div class="chapter-ref-body" data-chapter-ref-body>
+                <p class="chapter-data-slot-title">章节参考数据</p>
+                <div class="chapter-ref-template-row" hidden>
+                  <span class="muted chapter-ref-kicker">模板章节名</span>
+                  <strong class="chapter-ref-template-title"></strong>
+                </div>
+                <p class="muted chapter-ref-lead">
+                  学生字段以标签展示，默认一行，多出的可展开查看；点「解析到 PPT」将自动预分配，也可在下方下拉中手动添加或点标签上的 × 移除。
+                </p>
+                <div class="chapter-ref-tags-shell" data-chapter-ref-tags-shell>
+                  <div class="chapter-ref-tags" data-chapter-ref-tags aria-label="已挂载的学生字段"></div>
+                  <button
+                    type="button"
+                    class="chapter-ref-tags-toggle"
+                    data-chapter-ref-tags-toggle
+                    hidden
+                    aria-expanded="false"
+                  >
+                    展开全部标签
+                  </button>
+                </div>
+                <div class="chapter-ref-add-row">
+                  <select class="select-inline chapter-ref-field-select" data-chapter-ref-select aria-label="选择要添加的学生字段">
+                    <option value="">选择学生字段并添加…</option>
+                  </select>
+                  <button type="button" class="button gen-btn-chapter gen-btn-chapter--all chapter-ref-add-btn">
+                    添加
+                  </button>
+                </div>
+                <div class="chapter-ref-screenshots">
+                  <p class="muted chapter-ref-screenshots-kicker">参考截图</p>
+                  <p class="muted chapter-ref-screenshots-lead">可上传多张图片，后续将用于填入对应章节 PPT；支持 PNG / JPEG / GIF / WebP，单张不超过 15MB。</p>
+                  <div class="chapter-ref-screenshot-list" data-chapter-ref-screenshot-list aria-label="已上传截图"></div>
+                  <div class="chapter-ref-screenshot-actions">
+                    <input
+                      type="file"
+                      accept="image/png,image/jpeg,image/jpg,image/gif,image/webp"
+                      class="chapter-ref-screenshot-input"
+                      data-chapter-ref-file-input
+                      multiple
+                      hidden
+                    />
+                    <button type="button" class="button secondary chapter-ref-screenshot-upload-btn" data-chapter-ref-upload-btn>
+                      上传截图
+                    </button>
+                  </div>
+                  <p class="muted chapter-ref-screenshot-status" data-chapter-ref-screenshot-status hidden></p>
+                </div>
+              </div>
+            </div>
+          </div>
+        {% endfor %}
+      </div>
+    {% else %}
+      <p class="error">未产生章节分组，请确认已成功解析且至少有一页内容。</p>
+    {% endif %}
+    <div style="margin-top: 14px; display: flex; flex-wrap: wrap; gap: 12px; align-items: center;">
+      <button type="submit" id="ai-generate-submit" {% if not chapter_groups %}disabled{% endif %}>生成并下载回填 PPT</button>
+      <span class="muted">生成在后台进行，可随时查看下方进度；完成后在此查看文档内容并下载 PPT。</span>
+    </div>
+    <div id="generate-progress" class="generate-progress" role="status" aria-live="polite">
+      <div class="progress-message" id="generate-progress-message"></div>
+      <div class="progress-bar-wrap" aria-hidden="true">
+        <div class="progress-bar" id="generate-progress-bar"></div>
+      </div>
+      <div class="progress-error" id="generate-progress-error" hidden></div>
+    </div>
+  </form>
+</div>

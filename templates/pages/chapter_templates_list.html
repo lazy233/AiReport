@@ -1,0 +1,50 @@
+{% extends "layout/base.html" %}
+{% block title %}章节模板管理{% endblock %}
+
+{% block content %}
+  <div class="breadcrumb">
+    <a href="{{ url_for('web.overview') }}">概览</a>
+    <span class="breadcrumb-sep">/</span>
+    <span>章节模板管理</span>
+  </div>
+
+  <div class="card hero assistant-intro">
+    <div class="section-head" style="margin-bottom: 0; align-items: flex-start;">
+      <div>
+        <h1 style="margin-bottom: 8px;">章节模板管理</h1>
+        <p class="muted" style="margin: 0;">
+          在此<strong>查看</strong>全部章节模板，可<strong>新建、编辑、删除</strong>；列表支持按名称或说明搜索。
+          模板用于约束「一份 PPT 应包含哪些章节」，数据持久化在数据库。
+        </p>
+      </div>
+      <a class="button" href="{{ url_for('web.chapter_template_new') }}">新建模板</a>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="section-head" style="flex-wrap: wrap; gap: 12px;">
+      <h2 class="h-inline" style="margin: 0;">模板列表</h2>
+      <div class="slide-actions" style="gap: 8px; flex-wrap: wrap; align-items: center;">
+        <label class="muted" style="display: flex; align-items: center; gap: 8px; margin: 0;">
+          <span>搜索</span>
+          <input
+            type="search"
+            id="ct-list-q"
+            class="select-inline"
+            style="min-width: 200px; max-width: 320px;"
+            placeholder="名称、说明、编码…"
+            autocomplete="off"
+          />
+        </label>
+        <button type="button" class="button secondary" id="ct-list-search">搜索</button>
+        <button type="button" class="button secondary" id="ct-list-refresh">刷新</button>
+      </div>
+    </div>
+    <div id="ct-list-mount" class="table-scroll"></div>
+  </div>
+{% endblock %}
+
+{% block scripts %}
+  <script src="{{ url_for('static', filename='js/app/chapter-templates-store.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/app/chapter-templates-list.js') }}"></script>
+{% endblock %}

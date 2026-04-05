@@ -1,0 +1,239 @@
+{% extends "layout/base.html" %}
+{% block title %}{% if page_mode == 'new' %}新建学生档案{% else %}编辑学生档案{% endif %}{% endblock %}
+
+{% block content %}
+  <div class="breadcrumb">
+    <a href="{{ url_for('web.student_data_list') }}">数据管理</a>
+    <span class="breadcrumb-sep">/</span>
+    <span>{% if page_mode == 'new' %}新建{% else %}编辑{% endif %}</span>
+  </div>
+
+  <div id="sd-editor-not-found" class="card error" hidden>
+    <p>未找到该条数据。</p>
+    <p><a class="button" href="{{ url_for('web.student_data_list') }}">返回列表</a></p>
+  </div>
+
+  <div id="sd-editor-found" class="sd-student-page" hidden>
+    <div class="card sd-student-header-card">
+      <div class="section-head">
+        <div>
+          <h2 id="sd-editor-page-title" style="margin: 0 0 6px 0;">
+            {% if page_mode == 'new' %}新建学生档案{% else %}编辑学生档案{% endif %}
+          </h2>
+          <p id="sd-editor-subtitle" class="muted" style="margin: 0; font-size: 14px;"></p>
+        </div>
+        <div class="ct-detail-actions">
+          <a class="button secondary" href="{{ url_for('web.student_data_list') }}">返回列表</a>
+          <button type="button" class="button" id="sd-save-btn">保存</button>
+        </div>
+      </div>
+    </div>
+
+    <div
+      class="tabs-bar sd-profile-tabs sd-profile-tabs--outside"
+      role="tablist"
+      aria-label="学生档案维度"
+    ></div>
+
+    <div id="sd-editor-tab-panels" class="sd-profile-panels-host"></div>
+
+    <div class="card sd-editor-content-card">
+      <label for="sd-content" class="sd-inline-label">数据内容（选填，用于列表摘要与检索）</label>
+      <textarea id="sd-content" class="ct-textarea" rows="5" placeholder="可填写原始材料、生成用正文等"></textarea>
+    </div>
+  </div>
+{% endblock %}
+
+{% block scripts %}
+  <script src="{{ url_for('static', filename='js/app/student-data-store.js') }}"></script>
+  <script>
+    (function () {
+      var pageMode = {{ page_mode | tojson }};
+      var recordId = {{ record_id | tojson }};
+
+      var TEXTAREA_DIMS = { guidance: true };
+
+      function pfId(dimId, key) {
+        return "sd-pf-" + dimId + "-" + key;
+      }
+
+      function fieldInput(dim, f, value) {
+        var id = pfId(dim.id, f.key);
+        var v = value != null ? String(value) : "";
+        if (TEXTAREA_DIMS[dim.id]) {
+          return (
+            '<div class="ct-field sd-profile-field">' +
+            '<label for="' +
+            id +
+            '">' +
+            escapeHtml(f.label) +
+            "</label>" +
+            '<textarea class="ct-textarea sd-profile-textarea" id="' +
+            id +
+            '" rows="4">' +
+            escapeHtml(v) +
+            "</textarea>" +
+            "</div>"
+          );
+        }
+        return (
+          '<div class="ct-field sd-profile-field">' +
+          '<label for="' +
+          id +
+          '">' +
+          escapeHtml(f.label) +
+          "</label>" +
+          '<input type="text" class="ct-input" id="' +
+          id +
+          '" value="' +
+          escapeAttr(v) +
+          '" />' +
+          "</div>"
+        );
+      }
+
+      function escapeHtml(s) {
+        var d = document.createElement("div");
+        d.textContent = s;
+        return d.innerHTML;
+      }
+
+      function escapeAttr(s) {
+        return String(s)
+          .replace(/&/g, "&amp;")
+          .replace(/"/g, "&quot;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;");
+      }
+
+      function renderEditorPanels(spec, dims) {
+        var tabBar = document.querySelector("#sd-editor-found .sd-profile-tabs");
+        var panelHost = document.getElementById("sd-editor-tab-panels");
+        if (!tabBar || !panelHost) return;
+
+        tabBar.innerHTML = "";
+        panelHost.innerHTML = "";
+        var tabBtns = [];
+        var panels = [];
+
+        spec.forEach(function (dim, idx) {
+          var btn = document.createElement("button");
+          btn.type = "button";
+          btn.className = "tab-btn";
+          btn.setAttribute("role", "tab");
+          btn.id = "sd-ed-tab-" + dim.id;
+          btn.textContent = dim.title;
+          btn.setAttribute("aria-selected", idx === 0 ? "true" : "false");
+          btn.setAttribute("aria-controls", "sd-ed-panel-" + dim.id);
+          tabBar.appendChild(btn);
+          tabBtns.push(btn);
+
+          var vals = (dims && dims[dim.id]) || {};
+          var inner = "";
+          dim.fields.forEach(function (f) {
+            inner += fieldInput(dim, f, vals[f.key] || "");
+          });
+
+          var panel = document.createElement("div");
+          panel.className = "card tab-panel sd-profile-panel sd-profile-body-card";
+          panel.id = "sd-ed-panel-" + dim.id;
+          panel.setAttribute("role", "tabpanel");
+          panel.hidden = idx !== 0;
+          panel.innerHTML = inner;
+          panelHost.appendChild(panel);
+          panels.push(panel);
+        });
+
+        tabBtns.forEach(function (b, i) {
+          b.setAttribute("aria-controls", panels[i].id);
+        });
+
+        function activate(ix) {
+          tabBtns.forEach(function (btn, i) {
+            var on = i === ix;
+            btn.classList.toggle("is-active", on);
+            btn.setAttribute("aria-selected", on ? "true" : "false");
+            btn.tabIndex = on ? 0 : -1;
+            panels[i].hidden = !on;
+          });
+        }
+        tabBtns.forEach(function (btn, i) {
+          btn.addEventListener("click", function () { activate(i); });
+        });
+        activate(0);
+      }
+
+      function collectProfile() {
+        var profile = { basic: {}, learning: {}, hours: {}, guidance: {} };
+        StudentDataStore.profileSpec.forEach(function (dim) {
+          dim.fields.forEach(function (f) {
+            var el = document.getElementById(pfId(dim.id, f.key));
+            profile[dim.id][f.key] = el ? String(el.value).trim() : "";
+          });
+        });
+        return profile;
+      }
+
+      async function run() {
+        var nf = document.getElementById("sd-editor-not-found");
+        var fd = document.getElementById("sd-editor-found");
+
+        var rec = null;
+        if (pageMode !== "new") {
+          rec = await StudentDataStore.get(recordId);
+        }
+        if (pageMode !== "new" && !rec) {
+          nf.hidden = false;
+          return;
+        }
+
+        fd.hidden = false;
+        var dims = rec ? StudentDataStore.mergeDisplayProfile(rec) : null;
+        renderEditorPanels(StudentDataStore.profileSpec, dims);
+
+        document.getElementById("sd-content").value = (rec && rec.content) || "";
+
+        var sub = document.getElementById("sd-editor-subtitle");
+        if (sub && rec) {
+          var d = StudentDataStore.mergeDisplayProfile(rec);
+          var parts = [];
+          if (d.basic && d.basic.studentId) parts.push("学号 " + d.basic.studentId);
+          if (d.basic && d.basic.className) parts.push(d.basic.className);
+          sub.textContent = pageMode === "edit" && parts.length ? parts.join(" · ") : "";
+        }
+
+        document.getElementById("sd-save-btn").addEventListener("click", async function () {
+          var profile = collectProfile();
+          var r = {
+            id: pageMode === "new" ? "" : recordId,
+            profile: profile,
+            content: document.getElementById("sd-content").value.trim(),
+          };
+          r.name = (profile.basic && profile.basic.studentName) || "";
+          r.studentId = (profile.basic && profile.basic.studentId) || "";
+          r.className = (profile.basic && profile.basic.className) || "";
+          r.email = (profile.basic && profile.basic.email) || "";
+          r.phone = (profile.basic && profile.basic.phone) || "";
+          r.remark = (profile.basic && profile.basic.remark) || "";
+          try {
+            var id = await StudentDataStore.save(r);
+            window.location.href = "/student-data/" + encodeURIComponent(id);
+          } catch (e) {
+            alert(e.message || String(e));
+          }
+        });
+      }
+
+      function boot() {
+        run().catch(function (e) {
+          alert("加载失败：" + (e.message || String(e)));
+        });
+      }
+      if (document.readyState === "loading") {
+        document.addEventListener("DOMContentLoaded", boot);
+      } else {
+        boot();
+      }
+    })();
+  </script>
+{% endblock %}

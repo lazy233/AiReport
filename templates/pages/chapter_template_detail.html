@@ -1,0 +1,92 @@
+{% extends "layout/base.html" %}
+{% block title %}章节模板详情{% endblock %}
+
+{% block content %}
+  <div class="breadcrumb">
+    <a href="{{ url_for('web.chapter_templates_list') }}">章节模板管理</a>
+    <span class="breadcrumb-sep">/</span>
+    <span>详情</span>
+  </div>
+
+  <div id="ct-not-found" class="card error" hidden>
+    <p>未找到该模板，可能已被删除或 ID 无效。</p>
+    <p><a class="button" href="{{ url_for('web.chapter_templates_list') }}">返回列表</a></p>
+  </div>
+
+  <div id="ct-found" hidden>
+    <div class="card">
+      <div class="section-head">
+        <h2 style="margin: 0;">模板详情</h2>
+        <div class="ct-detail-actions">
+          <a class="button secondary" href="{{ url_for('web.chapter_templates_list') }}">返回列表</a>
+          <a class="button" id="ct-goto-edit" href="#">编辑</a>
+        </div>
+      </div>
+      <div id="ct-meta-display" class="ct-meta-display"></div>
+    </div>
+
+    <div class="card">
+      <h3 style="margin-top: 0; font-size: 16px;">章节结构</h3>
+      <p class="muted" style="margin-top: 0;">每个章节对应顶部一个 Tab；详情页仅查看，删除请进入编辑页操作。</p>
+      <div id="ct-tabs-root">
+        <div id="ct-tab-bar" class="ct-tab-bar" role="tablist"></div>
+        <div id="ct-tab-panel" class="ct-tab-panel ct-tab-panel-box" role="tabpanel"></div>
+      </div>
+    </div>
+  </div>
+{% endblock %}
+
+{% block scripts %}
+  <script src="{{ url_for('static', filename='js/app/chapter-templates-store.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/app/chapter-template-tabs.js') }}"></script>
+  <script>
+    (function () {
+      var templateId = {{ template_id | tojson }};
+      function esc(s) {
+        var d = document.createElement("div");
+        d.textContent = s == null ? "" : String(s);
+        return d.innerHTML;
+      }
+      async function run() {
+        var tpl = await ChapterTemplatesStore.get(templateId);
+        var nf = document.getElementById("ct-not-found");
+        var fd = document.getElementById("ct-found");
+        var editA = document.getElementById("ct-goto-edit");
+        if (editA) {
+          editA.href = "/chapter-templates/" + encodeURIComponent(templateId) + "/edit";
+        }
+        if (!tpl) {
+          nf.hidden = false;
+          return;
+        }
+        fd.hidden = false;
+        var md = document.getElementById("ct-meta-display");
+        if (md) {
+          md.innerHTML =
+            '<div class="ct-meta-row"><span class="ct-meta-k">名称</span><span class="ct-meta-v">' +
+            esc(tpl.name || "—") +
+            "</span></div>" +
+            '<div class="ct-meta-row"><span class="ct-meta-k">说明</span><span class="ct-meta-v">' +
+            (tpl.description ? esc(tpl.description) : '<span class="muted">（无）</span>') +
+            "</span></div>";
+        }
+        var root = document.getElementById("ct-tabs-root");
+        ChapterTemplateTabs.mount(root, { mode: "detail", initialDraft: tpl });
+      }
+      function boot() {
+        run().catch(function (e) {
+          var nf = document.getElementById("ct-not-found");
+          if (nf) {
+            nf.hidden = false;
+            nf.innerHTML = "<p>加载失败：" + esc(e.message || String(e)) + "</p>";
+          }
+        });
+      }
+      if (document.readyState === "loading") {
+        document.addEventListener("DOMContentLoaded", boot);
+      } else {
+        boot();
+      }
+    })();
+  </script>
+{% endblock %}

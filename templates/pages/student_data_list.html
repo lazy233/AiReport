@@ -1,0 +1,45 @@
+{% extends "layout/base.html" %}
+{% block title %}数据管理{% endblock %}
+
+{% block content %}
+  <div class="breadcrumb">
+    <a href="{{ url_for('web.overview') }}">概览</a>
+    <span class="breadcrumb-sep">/</span>
+    <span>数据管理</span>
+  </div>
+
+  <div class="card hero assistant-intro">
+    <div class="section-head" style="margin-bottom: 0; align-items: center;">
+      <h1 style="margin: 0;">数据管理</h1>
+      <a class="button" href="{{ url_for('web.student_data_new') }}">新建数据</a>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="sd-toolbar">
+      <input
+        type="search"
+        id="sd-search-input"
+        class="ct-input sd-search-input"
+        placeholder="搜索…"
+        autocomplete="off"
+      />
+      <button type="button" class="button secondary" id="sd-search-btn">查询</button>
+      <button type="button" class="button secondary" id="sd-refresh-btn">重置</button>
+      <label class="sd-bulk-label" style="margin-left: auto;">
+        <span class="button secondary" style="cursor: pointer; display: inline-block;">批量导入</span>
+        <input type="file" id="sd-bulk-file" accept=".csv,.json,text/csv,application/json" hidden />
+      </label>
+    </div>
+    <p class="muted" style="margin: 12px 0 0; font-size: 13px;">
+      批量导入：UTF-8 编码的 .csv / .json；CSV 首行为表头（如 姓名、学号、数据内容 等，支持中英文列名）。
+    </p>
+    <div id="sd-bulk-message" hidden></div>
+    <div id="sd-list-mount" class="table-scroll" style="margin-top: 16px;"></div>
+  </div>
+{% endblock %}
+
+{% block scripts %}
+  <script src="{{ url_for('static', filename='js/app/student-data-store.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/app/student-data-list.js') }}"></script>
+{% endblock %}

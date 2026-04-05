@@ -1,0 +1,82 @@
+{% extends "layout/base.html" %}
+{% block title %}{% if page_mode == 'new' %}新建章节模板{% else %}编辑章节模板{% endif %}{% endblock %}
+
+{% block content %}
+  <div class="breadcrumb">
+    <a href="{{ url_for('web.chapter_templates_list') }}">章节模板管理</a>
+    <span class="breadcrumb-sep">/</span>
+    <span>{% if page_mode == 'new' %}新建{% else %}编辑{% endif %}</span>
+  </div>
+
+  <div id="ct-editor-not-found" class="card error" hidden>
+    <p>未找到该模板。</p>
+    <p><a class="button" href="{{ url_for('web.chapter_templates_list') }}">返回列表</a></p>
+  </div>
+
+  <div id="ct-editor-found" hidden>
+    <div class="card">
+      <h2 style="margin-top: 0;">{% if page_mode == 'new' %}新建模板{% else %}编辑模板{% endif %}</h2>
+      <p class="muted">填写模板信息与各章节约束；底部「保存」后进入详情页。</p>
+      <div class="ct-field">
+        <label for="ct-meta-name">模板名称</label>
+        <input type="text" id="ct-meta-name" class="ct-input" placeholder="例如：学期总结汇报" />
+      </div>
+      <div class="ct-field">
+        <label for="ct-meta-desc">模板说明（可选）</label>
+        <textarea id="ct-meta-desc" class="ct-textarea" rows="2" placeholder="适用场景简述"></textarea>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3 style="margin-top: 0; font-size: 16px;">章节结构</h3>
+      <p class="muted" style="margin-top: 0;">章节对应顶部 Tab；× 删除当前章节（至少保留一章）；「+ 添加章节」增加新 Tab。</p>
+      <div id="ct-tabs-root">
+        <div id="ct-tab-bar" class="ct-tab-bar" role="tablist"></div>
+        <div id="ct-tab-panel" class="ct-tab-panel ct-tab-panel-box" role="tabpanel"></div>
+      </div>
+      <div style="margin-top: 20px;">
+        <button type="button" class="button" id="ct-editor-save">保存模板</button>
+        <a class="button secondary" href="{{ url_for('web.chapter_templates_list') }}" style="margin-left: 10px;">取消</a>
+      </div>
+    </div>
+  </div>
+{% endblock %}
+
+{% block scripts %}
+  <script src="{{ url_for('static', filename='js/app/chapter-templates-store.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/app/chapter-template-tabs.js') }}"></script>
+  <script>
+    (function () {
+      var pageMode = {{ page_mode | tojson }};
+      var templateId = {{ template_id | tojson }};
+      async function run() {
+        var nf = document.getElementById("ct-editor-not-found");
+        var fd = document.getElementById("ct-editor-found");
+        var draft;
+        if (pageMode === "new") {
+          draft = ChapterTemplatesStore.newEmpty();
+          fd.hidden = false;
+        } else {
+          draft = await ChapterTemplatesStore.get(templateId);
+          if (!draft) {
+            nf.hidden = false;
+            return;
+          }
+          fd.hidden = false;
+        }
+        var root = document.getElementById("ct-tabs-root");
+        ChapterTemplateTabs.mount(root, { mode: "editor", initialDraft: draft });
+      }
+      function boot() {
+        run().catch(function (e) {
+          alert("加载失败：" + (e.message || String(e)));
+        });
+      }
+      if (document.readyState === "loading") {
+        document.addEventListener("DOMContentLoaded", boot);
+      } else {
+        boot();
+      }
+    })();
+  </script>
+{% endblock %}

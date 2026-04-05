@@ -1,0 +1,76 @@
+================================================================================
+字数约束开关说明（解除 / 恢复）
+================================================================================
+更新时间：以你本地修改日期为准；用于记录「解除硬性字数约束」相关改动，便于手动恢复。
+
+--------------------------------------------------------------------------------
+一、总开关（恢复时必改）
+--------------------------------------------------------------------------------
+
+文件：app.py
+
+  GENERATION_HARD_LENGTH_CAP = False   # 当前：已解除硬约束
+  # 恢复旧行为（按参考字数 + max_chars 约束模型并截断）改为：
+  # GENERATION_HARD_LENGTH_CAP = True
+
+可选环境变量（仅当 HARD_LENGTH_CAP 为 False 时有效）：
+
+  GENERATION_SOFT_MAX_CHARS
+  默认 500000 — 后处理几乎不截断；超极端长文的安全上限。可按需改大/改小。
+
+--------------------------------------------------------------------------------
+二、GENERATION_HARD_LENGTH_CAP = False 时，代码行为摘要
+--------------------------------------------------------------------------------
+
+1) build_model_payload()
+   - 不再对每个组件调用 resolve_generation_max_chars() 决定上限。
+   - max_chars 固定为 GENERATION_SOFT_MAX_CHARS；reference_char_count 固定为 0。
+   - 不附加 suggested_length_range。
+   - payload 内 length_rule 改为「不设硬性上限」说明，而非「必须 <= 参考字数」。
+
+2) normalize_generated_result()
+   - 一律按各组件 max_chars 做截断：正文类 max_chars 仍为极大值，实际不裁；
+     title/subtitle/placeholder 在编 payload 时已压低 max_chars，此处会裁短标题。
+
+3) _dashscope_generate_normalized()
+   - 软模式下仍强调「标题类必须 <= max_chars」，正文可展开。
+
+4) 页面 templates/index.html
+   - 根据 generation_hard_length_cap 显示「已解除字数硬约束」或「启用字数硬约束」提示。
+
+5) Flask render_template
+   - index 与 413 错误页增加模板变量：generation_hard_length_cap
+
+--------------------------------------------------------------------------------
+三、恢复旧逻辑的检查清单
+--------------------------------------------------------------------------------
+
+[ ] app.py：GENERATION_HARD_LENGTH_CAP = True
+[ ] （可选）删除或保留 LENGTH_CONSTRAINT_CHANGELOG.txt — 不影响运行
+[ ] 重启 Flask / 重新运行 python app.py
+
+无需改：estimate_max_chars、resolve_generation_max_chars 仍保留；仅在
+GENERATION_HARD_LENGTH_CAP 为 True 时按原路径使用。
+
+--------------------------------------------------------------------------------
+标题族单行上限（与 GENERATION_HARD_LENGTH_CAP 独立，始终生效）
+--------------------------------------------------------------------------------
+
+环境变量（可选，不设则用 app.py 默认值）：
+
+  GENERATION_HEADING_MAX_CHARS         默认 6
+  标题族（title / subtitle / placeholder 及 heading_cap_type）生成都不会超过该值；极窄框会再略收紧。
+
+- apply_heading_line_limits() 在 build_model_payload 中收紧标题族。
+- 自由文本框可由 refine_heading_cap_category() 写入 heading_cap_type（名称/字号/框高启发式）。
+- 占位符 BODY、VERTICAL_BODY 解析为 type=body，按正文区域估计长度，不走上述三档。
+- 更换解析结果需重新上传 PPT（旧 PARSE_CACHE 里 BODY 可能仍为 placeholder）。
+
+--------------------------------------------------------------------------------
+四、未改动的部分
+--------------------------------------------------------------------------------
+
+- parse_pptx / 组件里存的 max_chars、position_cm 仍用于解析与正文类估计。
+- fallback_generated_text() 里对标题示例仍有短字符串截取（与模型约束无关）。
+
+================================================================================

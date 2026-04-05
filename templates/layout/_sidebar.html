@@ -1,0 +1,63 @@
+{# 主导航：资料与模板三项可折叠 #}
+{% set nav_fold_active = request.endpoint in (
+  'web.assistant_upload',
+  'web.presentation_detail',
+  'web.student_data_list',
+  'web.student_data_new',
+  'web.student_data_detail',
+  'web.student_data_edit',
+  'web.chapter_templates_list',
+  'web.chapter_template_new',
+  'web.chapter_template_detail',
+  'web.chapter_template_edit',
+) %}
+<aside class="app-sidebar" aria-label="主导航">
+  <div class="app-sidebar-brand">
+    <strong>报告生成平台</strong>
+    <span>PPT Auto Generator</span>
+  </div>
+  <nav class="app-nav">
+    <a
+      class="app-nav-link{% if request.endpoint == 'web.overview' %} is-active{% endif %}"
+      href="{{ url_for('web.overview') }}"
+    >概览</a>
+    <a
+      class="app-nav-link{% if request.endpoint == 'web.assistant_generate' %} is-active{% endif %}"
+      href="{{ url_for('web.assistant_generate') }}"
+    >文档生成</a>
+    <details class="app-nav-fold"{% if nav_fold_active %} open{% endif %}>
+      <summary class="app-nav-fold-summary">资料与模板</summary>
+      <div class="app-nav-fold-inner">
+        <a
+          class="app-nav-link app-nav-link--sub{% if request.endpoint in ('web.assistant_upload', 'web.presentation_detail') %} is-active{% endif %}"
+          href="{{ url_for('web.assistant_upload') }}"
+        >PPT模板管理</a>
+        <a
+          class="app-nav-link app-nav-link--sub{% if request.endpoint in (
+            'web.student_data_list',
+            'web.student_data_new',
+            'web.student_data_detail',
+            'web.student_data_edit',
+          ) %} is-active{% endif %}"
+          href="{{ url_for('web.student_data_list') }}"
+        >学生数据管理</a>
+        <a
+          class="app-nav-link app-nav-link--sub{% if request.endpoint in (
+            'web.chapter_templates_list',
+            'web.chapter_template_new',
+            'web.chapter_template_detail',
+            'web.chapter_template_edit',
+          ) %} is-active{% endif %}"
+          href="{{ url_for('web.chapter_templates_list') }}"
+        >章节模板管理</a>
+      </div>
+    </details>
+    <a
+      class="app-nav-link{% if request.endpoint in ('web.generation_history_list', 'web.generation_history_detail') %} is-active{% endif %}"
+      href="{{ url_for('web.generation_history_list') }}"
+    >历史记录</a>
+  </nav>
+  <div class="app-sidebar-foot">
+    概览 · 文档 · PPT模板 · 数据 · 章节模板 · 历史
+  </div>
+</aside>

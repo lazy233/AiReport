@@ -1,0 +1,33 @@
+from ppt_report.models.db import (
+    GenerationHistory,
+    ParsedPresentation,
+    db_enabled,
+    cleanup_expired_generation_history,
+    delete_generation_history,
+    get_generation_history,
+    get_overview_stats,
+    init_db,
+    list_generation_history_summaries,
+    list_presentation_summaries,
+    load_parsed_presentation,
+    persist_generation_history,
+    persist_parsed_presentation,
+    update_presentation_file_name,
+)
+
+__all__ = [
+    "GenerationHistory",
+    "ParsedPresentation",
+    "db_enabled",
+    "cleanup_expired_generation_history",
+    "delete_generation_history",
+    "get_generation_history",
+    "get_overview_stats",
+    "init_db",
+    "list_generation_history_summaries",
+    "list_presentation_summaries",
+    "load_parsed_presentation",
+    "persist_generation_history",
+    "persist_parsed_presentation",
+    "update_presentation_file_name",
+]

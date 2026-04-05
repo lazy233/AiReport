@@ -1,0 +1,43 @@
+{% extends "layout/base.html" %}
+{% block title %}文档生成 · 报告生成平台{% endblock %}
+
+{% block content %}
+  <div class="card generate-workspace-card">
+    <h2>AI 文档内容生成</h2>
+    <p class="muted generate-workspace-intro">
+      填写<strong>主题</strong>，并按<strong>章节块</strong>选择要生成的范围。系统会为对应页面里「可填文字区域」生成文档内容。
+    </p>
+
+    <div class="generate-template-section">
+      <h3 class="generate-section-title">选择模板</h3>
+      <p class="muted">下列选项来自数据库中的已解析 PPT 记录。</p>
+      {% if not db_enabled %}
+        <p class="error">未连接 PostgreSQL（请检查 DATABASE_URL 与数据库服务），无法列出已解析模板。</p>
+      {% endif %}
+      <p>
+        <label for="generate-task-select">已解析的 PPT</label><br />
+        <select id="generate-task-select" class="select-inline">
+          <option value="">— 请选择 —</option>
+        </select>
+      </p>
+      <p class="error" id="generate-context-error" hidden></p>
+      <p class="muted" id="generate-context-hint" hidden></p>
+    </div>
+
+    <div id="generate-panel-root" class="generate-panel-root">
+      <p class="muted generate-panel-placeholder" id="generate-panel-placeholder">
+        请先选择一份已解析的 PPT 模板，下方将显示主题与章节配置。
+      </p>
+    </div>
+  </div>
+  <div id="ai-result-mount"></div>
+{% endblock %}
+
+{% block scripts %}
+  <script src="{{ url_for('static', filename='js/app/util.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/app/generation-history-store.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/app/generate.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/app/generate-pickers.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/app/generate-chapter-ref.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/app/generate-page.js') }}"></script>
+{% endblock %}

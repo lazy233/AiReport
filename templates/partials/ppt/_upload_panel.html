@@ -1,0 +1,54 @@
+<div class="card hero">
+  <h2 style="margin-top:0;font-size:22px;">上传并解析</h2>
+  <p class="muted">选择 .pptx，系统在后台解析结构、识别页面类型，并把结果与模板文件一并保存到数据库与上传目录。</p>
+  <form id="parse-upload-form" method="post" enctype="multipart/form-data" class="parse-upload-form">
+    <div class="ppt-upload-field">
+      <label class="ppt-upload-label" for="ppt-file-input">PPT 文件</label>
+      <div
+        class="ppt-dropzone"
+        id="ppt-dropzone"
+        tabindex="0"
+        role="group"
+        aria-label="上传区域，可将文件拖入或点击选择"
+        aria-describedby="ppt-dropzone-desc"
+      >
+        <input
+          type="file"
+          name="ppt_file"
+          id="ppt-file-input"
+          class="ppt-file-input-hidden"
+          accept=".ppt,.pptx"
+          required
+        />
+        <div class="ppt-dropzone-inner">
+          <div class="ppt-dropzone-icon" aria-hidden="true">
+            <svg xmlns="http://www.w3.org/2000/svg" width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+              <polyline points="17 8 12 3 7 8"></polyline>
+              <line x1="12" y1="3" x2="12" y2="15"></line>
+            </svg>
+          </div>
+          <p class="ppt-dropzone-title">拖拽 .pptx 到此处上传</p>
+          <p class="ppt-dropzone-desc muted" id="ppt-dropzone-desc">或点击下方按钮从本机选择；单文件，上限以服务器配置为准。</p>
+          <button type="button" class="button secondary ppt-browse-btn" id="ppt-browse-btn">从本机选择</button>
+          <p class="ppt-file-name" id="ppt-file-name" hidden></p>
+        </div>
+      </div>
+      <p class="error ppt-file-reject" id="ppt-file-reject" hidden></p>
+    </div>
+    <div class="parse-upload-actions">
+      <button type="submit" id="parse-submit-btn">上传并解析</button>
+      <span class="muted parse-upload-actions-hint">解析在后台进行，大文件也可看到阶段提示。</span>
+    </div>
+  </form>
+  <div id="parse-progress" class="generate-progress" role="status" aria-live="polite">
+    <div class="progress-message" id="parse-progress-message"></div>
+    <div class="progress-bar-wrap" aria-hidden="true">
+      <div class="progress-bar" id="parse-progress-bar"></div>
+    </div>
+    <div class="progress-error" id="parse-progress-error" hidden></div>
+  </div>
+  {% if error %}
+    <p class="error">{{ error }}</p>
+  {% endif %}
+</div>

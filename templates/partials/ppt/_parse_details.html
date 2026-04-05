@@ -1,0 +1,66 @@
+<details class="card" style="margin-top: 18px; padding: 0; overflow: hidden;">
+  <summary>
+    <span>高级：查看解析详情</span>
+    <span class="summary-meta">默认折叠</span>
+  </summary>
+  <div class="details-body">
+    <div class="stack">
+      {% for slide in parsed.slides %}
+        <details>
+          <summary>
+            <span class="summary-main">
+              <span>第 {{ slide.slide_index }} 页</span>
+              <span class="badge">{{ slide.page_type_label or "未识别" }}</span>
+            </span>
+            <span class="summary-meta">组件 {{ slide.component_count }} 个（顶层 {{ slide.top_level_component_count }}）</span>
+          </summary>
+          <div class="details-body">
+            <p class="muted" style="margin-top: 0;">页面类型：<strong>{{ slide.page_type_label or "未识别" }}</strong>{% if slide.page_type_reason %}，判断依据：{{ slide.page_type_reason }}{% endif %}</p>
+            <table>
+              <thead>
+                <tr>
+                  <th>#</th>
+                  <th>层级</th>
+                  <th>父组件</th>
+                  <th>名称</th>
+                  <th>类型</th>
+                  <th>作用</th>
+                  <th>文本内容</th>
+                  <th>位置(cm)</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for comp in slide.components %}
+                  <tr>
+                    <td>{{ comp.index }}</td>
+                    <td>{{ comp.level }}</td>
+                    <td>{{ comp.parent_index or "-" }}</td>
+                    <td>{{ comp.name }}</td>
+                    <td>{{ comp.type }}</td>
+                    <td>{{ comp.role }}</td>
+                    <td>{{ comp.text or "-" }}</td>
+                    <td>
+                      left={{ comp.position_cm.left }},
+                      top={{ comp.position_cm.top }},
+                      width={{ comp.position_cm.width }},
+                      height={{ comp.position_cm.height }}
+                    </td>
+                  </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </details>
+      {% endfor %}
+    </div>
+    <details class="json-details" style="margin-top: 16px;">
+      <summary>
+        <span>查看解析原始 JSON</span>
+        <span class="summary-meta">默认折叠</span>
+      </summary>
+      <div class="details-body">
+        <pre>{{ parsed_json }}</pre>
+      </div>
+    </details>
+  </div>
+</details>

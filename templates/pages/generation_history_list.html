@@ -1,0 +1,26 @@
+{% extends "layout/base.html" %}
+{% block title %}历史记录{% endblock %}
+
+{% block content %}
+  <div class="breadcrumb">
+    <a href="{{ url_for('web.assistant_generate') }}">文档生成</a>
+    <span class="breadcrumb-sep">/</span>
+    <span>历史记录</span>
+  </div>
+
+  <div class="card hero assistant-intro">
+    <div class="section-head" style="margin-bottom: 0; align-items: center;">
+      <h1 style="margin: 0;">历史记录</h1>
+    </div>
+    <p class="muted" style="margin: 12px 0 0; font-size: 13px;">文档生成成功后写入数据库，并在 <code>uploads/filled_exports</code> 保留一份回填成品；默认仅保留最近 3 天，超时由服务自动清理记录与成品文件。再次下载仍依赖模板 <code>uploads/&lt;task_id&gt;.pptx</code>。</p>
+  </div>
+
+  <div class="card" id="gh-list-wrap">
+    <div id="gh-list-mount" class="table-scroll"></div>
+  </div>
+{% endblock %}
+
+{% block scripts %}
+  <script src="{{ url_for('static', filename='js/app/generation-history-store.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/app/generation-history-list.js') }}"></script>
+{% endblock %}
