@@ -64,6 +64,7 @@ python app.py
 
 ```bash
 docker compose up -d --build
+# 若系统只有旧版独立命令，请用：docker-compose up -d --build
 ```
 
 浏览器访问：`http://<服务器IP>:5000`（默认映射宿主机 `5000`，可通过 `.env` 中 `HOST_PORT` 修改）。

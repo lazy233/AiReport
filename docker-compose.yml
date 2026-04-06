@@ -1,10 +1,11 @@
 # AiReport + PostgreSQL（Docker Compose）
 # 用法：复制 .env.example 为 .env，填写 DASHSCOPE_API_KEY 与数据库密码等，再执行：
 #   docker compose up -d --build
+#   或（旧版独立命令）docker-compose up -d --build
 #
 # 访问：http://<服务器IP>:5000
 
-name: aireport
+version: "3.8"
 
 services:
   db:
