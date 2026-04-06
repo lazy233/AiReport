@@ -1,6 +1,11 @@
 <div class="card hero">
   <h2 style="margin-top:0;font-size:22px;">上传并解析</h2>
-  <p class="muted">选择 .pptx，系统在后台解析结构、识别页面类型，并把结果与模板文件一并保存到数据库与上传目录。</p>
+  <div class="ppt-upload-requirement" role="note" aria-live="polite">
+    <span class="ppt-upload-requirement-kicker">重要</span>
+    <p class="ppt-upload-requirement-body">
+      上传的 PPT 必须为<strong>成品报告</strong>（版式与内容已定型、可直接作为范例的完整报告），请勿使用草稿或半成品，以免影响解析与后续报告生成效果。
+    </p>
+  </div>
   <form id="parse-upload-form" method="post" enctype="multipart/form-data" class="parse-upload-form">
     <div class="ppt-upload-field">
       <label class="ppt-upload-label" for="ppt-file-input">PPT 文件</label>
@@ -10,7 +15,6 @@
         tabindex="0"
         role="group"
         aria-label="上传区域，可将文件拖入或点击选择"
-        aria-describedby="ppt-dropzone-desc"
       >
         <input
           type="file"
@@ -29,7 +33,6 @@
             </svg>
           </div>
           <p class="ppt-dropzone-title">拖拽 .pptx 到此处上传</p>
-          <p class="ppt-dropzone-desc muted" id="ppt-dropzone-desc">或点击下方按钮从本机选择；单文件，上限以服务器配置为准。</p>
           <button type="button" class="button secondary ppt-browse-btn" id="ppt-browse-btn">从本机选择</button>
           <p class="ppt-file-name" id="ppt-file-name" hidden></p>
         </div>
@@ -38,7 +41,6 @@
     </div>
     <div class="parse-upload-actions">
       <button type="submit" id="parse-submit-btn">上传并解析</button>
-      <span class="muted parse-upload-actions-hint">解析在后台进行，大文件也可看到阶段提示。</span>
     </div>
   </form>
   <div id="parse-progress" class="generate-progress" role="status" aria-live="polite">

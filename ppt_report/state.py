@@ -10,6 +10,8 @@ from pathlib import Path
 PARSE_CACHE: dict[str, dict] = {}
 TEMPLATE_PATHS: dict[str, Path] = {}
 LAST_GENERATION: dict[str, dict] = {}
+# 最近一次带章节参考 JSON 的生成（供导出时回填截图，无需再走大模型）
+LAST_CHAPTER_REF: dict[str, dict] = {}
 
 GENERATE_JOBS: dict[str, dict] = {}
 GENERATE_JOBS_LOCK = threading.Lock()

@@ -35,10 +35,36 @@
     }
   }
 
-  var PLACEHOLDER_HTML =
-    '<p class="muted generate-panel-placeholder" id="generate-panel-placeholder">' +
-    "请先选择一份已解析的 PPT 模板，下方将显示主题与章节配置。" +
-    "</p>";
+  function clearGenerateRefAnchor() {
+    var anchor = document.getElementById("generate-ref-anchor");
+    if (!anchor) return;
+    anchor.innerHTML = "";
+    anchor.hidden = true;
+  }
+
+  function clearGenerateTopicFoldAnchor() {
+    var anchor = document.getElementById("generate-topic-fold-anchor");
+    if (!anchor) return;
+    anchor.innerHTML = "";
+  }
+
+  function mountTopicFoldToAnchor(formRoot) {
+    var anchor = document.getElementById("generate-topic-fold-anchor");
+    var fold = formRoot && formRoot.querySelector("details.gen-topic-fold");
+    if (!anchor || !fold) return;
+    anchor.appendChild(fold);
+  }
+
+  function mountRefToolbarToAnchor(formRoot) {
+    var anchor = document.getElementById("generate-ref-anchor");
+    if (!anchor || !formRoot) return;
+    var toolbar = formRoot.querySelector("#gen-ref-toolbar");
+    var strip = formRoot.querySelector("#gen-ref-picks");
+    if (!toolbar) return;
+    anchor.appendChild(toolbar);
+    if (strip) anchor.appendChild(strip);
+    anchor.hidden = false;
+  }
 
   async function loadGenerateForm(taskId) {
     var root = document.getElementById("generate-panel-root");
@@ -46,49 +72,59 @@
     var hint = document.getElementById("generate-context-hint");
     var mountResult = document.getElementById("ai-result-mount");
     if (!root) return;
+    clearGenerateRefAnchor();
+    clearGenerateTopicFoldAnchor();
     if (errEl) {
       errEl.hidden = true;
       errEl.textContent = "";
     }
     if (hint) hint.hidden = true;
     if (mountResult) mountResult.innerHTML = "";
-    if (!taskId) {
-      root.innerHTML = PLACEHOLDER_HTML;
-      return;
-    }
+    var tid = (taskId || "").trim();
     root.innerHTML = '<p class="muted">正在加载生成表单…</p>';
     try {
-      var res = await fetch("/partials/generate-form?task_id=" + encodeURIComponent(taskId));
+      var res = await fetch("/partials/generate-form?task_id=" + encodeURIComponent(tid));
       var html = await res.text();
       if (!res.ok) {
         root.innerHTML = html;
         return;
       }
       root.innerHTML = html;
-      var ctx = await fetch("/api/presentations/" + encodeURIComponent(taskId));
-      var meta = await ctx.json();
-      if (hint && meta.ok) {
-        hint.hidden = false;
-        var msg =
-          "已选择：" +
-          (meta.file_name || taskId) +
-          "（" +
-          (meta.slide_count != null ? meta.slide_count + " 页" : "? 页") +
-          "）";
-        if (meta.has_template === false) {
-          msg += "。警告：服务器上未找到对应 .pptx 模板文件，生成后可能无法导出。";
+      if (tid) {
+        var ctx = await fetch("/api/presentations/" + encodeURIComponent(tid));
+        var meta = await ctx.json();
+        if (hint && meta.ok) {
+          hint.hidden = false;
+          var msg =
+            "已选择：" +
+            (meta.file_name || tid) +
+            "（" +
+            (meta.slide_count != null ? meta.slide_count + " 页" : "? 页") +
+            "）";
+          if (meta.has_template === false) {
+            msg += "。警告：服务器上未找到对应 .pptx 模板文件，生成后可能无法导出。";
+          }
+          hint.textContent = msg;
         }
-        hint.textContent = msg;
       }
       var form = root.querySelector("#ai-generate-form");
       if (window.PptApp && window.PptApp.bindGenerateForm) {
         window.PptApp.bindGenerateForm(form);
       }
+      mountTopicFoldToAnchor(root);
       if (window.PptApp && window.PptApp.syncGenerateRefPicksUi) {
         window.PptApp.syncGenerateRefPicksUi();
       }
       if (window.PptApp && window.PptApp.initChapterReferenceUi) {
         window.PptApp.initChapterReferenceUi(form);
+      }
+      mountRefToolbarToAnchor(root);
+      if (
+        tid &&
+        window.PptApp &&
+        typeof window.PptApp.applyDefaultChapterTemplate === "function"
+      ) {
+        await window.PptApp.applyDefaultChapterTemplate(form);
       }
     } catch (e) {
       root.innerHTML = '<p class="error">加载失败：' + (e.message || String(e)) + "</p>";
@@ -110,14 +146,13 @@
         errEl.hidden = false;
         errEl.textContent = "加载模板列表失败：" + (e.message || String(e));
       }
-      return;
     }
 
     var preId = getQueryParam("task_id");
     if (preId && Array.from(sel.options).some(function (o) { return o.value === preId; })) {
       sel.value = preId;
-      loadGenerateForm(preId);
     }
+    loadGenerateForm((sel.value || "").trim());
 
     sel.addEventListener("change", function () {
       var v = (sel.value || "").trim();

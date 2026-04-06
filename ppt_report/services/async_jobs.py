@@ -13,7 +13,7 @@ from ppt_report import config
 from ppt_report import state
 from ppt_report.constants import GENERATE_JOBS_MAX, PARSE_JOBS_MAX
 from ppt_report.models import db
-from ppt_report.services.generate_pipeline import validate_generate_prerequisites
+from ppt_report.services.generate_pipeline import history_topic_for_record, validate_generate_prerequisites
 from ppt_report.services.chapter_ref_images import is_safe_task_id
 from ppt_report.services.page_types import classify_page_types_with_bailian
 from ppt_report.services.presentation_cache import get_parsed_from_cache, save_parsed_to_cache
@@ -202,7 +202,9 @@ def _generate_job_worker(
         )
 
     try:
-        err = validate_generate_prerequisites(task_id, topic, merged_extra, selected_slides)
+        err = validate_generate_prerequisites(
+            task_id, topic, merged_extra, selected_slides, chapter_ref
+        )
         if err:
             raise RuntimeError(err)
         parsed = get_parsed_from_cache(task_id)
@@ -222,6 +224,7 @@ def _generate_job_worker(
         )
         if task_id:
             state.LAST_GENERATION[task_id] = generated
+            state.LAST_CHAPTER_REF[task_id] = chapter_ref if isinstance(chapter_ref, dict) else {}
         history_id: str | None = None
         persist_extra = merged_extra
         if chapter_ref:
@@ -232,7 +235,11 @@ def _generate_job_worker(
                 persist_extra = merged_extra
         try:
             history_id = db.persist_generation_history(
-                task_id, topic, selected_slides, persist_extra, generated
+                task_id,
+                history_topic_for_record(task_id, chapter_ref, topic),
+                selected_slides,
+                persist_extra,
+                generated,
             )
         except Exception:  # noqa: BLE001
             log.warning("生成历史落库失败（任务仍视为成功）", exc_info=True)
@@ -246,7 +253,12 @@ def _generate_job_worker(
         }
         if history_id:
             done_kwargs["history_id"] = history_id
-            save_filled_export(history_id, task_id, generated)
+            save_filled_export(
+                history_id,
+                task_id,
+                generated,
+                chapter_ref if isinstance(chapter_ref, dict) else None,
+            )
         _update_generate_job(job_id, **done_kwargs)
     except Exception as exc:  # noqa: BLE001
         _update_generate_job(

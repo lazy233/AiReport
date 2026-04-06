@@ -36,11 +36,6 @@
     ></div>
 
     <div id="sd-editor-tab-panels" class="sd-profile-panels-host"></div>
-
-    <div class="card sd-editor-content-card">
-      <label for="sd-content" class="sd-inline-label">数据内容（选填，用于列表摘要与检索）</label>
-      <textarea id="sd-content" class="ct-textarea" rows="5" placeholder="可填写原始材料、生成用正文等"></textarea>
-    </div>
   </div>
 {% endblock %}
 
@@ -52,17 +47,31 @@
       var recordId = {{ record_id | tojson }};
 
       var TEXTAREA_DIMS = { guidance: true };
+      var DEFAULT_LIST_CONTENT = "学生数据";
 
       function pfId(dimId, key) {
         return "sd-pf-" + dimId + "-" + key;
       }
 
+      function fieldWrapClass(dim, f) {
+        var full =
+          !!TEXTAREA_DIMS[dim.id] ||
+          !!(f && f.fullWidth);
+        return (
+          "ct-field sd-profile-field" +
+          (full ? " sd-profile-field--full" : "")
+        );
+      }
+
       function fieldInput(dim, f, value) {
         var id = pfId(dim.id, f.key);
         var v = value != null ? String(value) : "";
+        var wrapCls = fieldWrapClass(dim, f);
         if (TEXTAREA_DIMS[dim.id]) {
           return (
-            '<div class="ct-field sd-profile-field">' +
+            '<div class="' +
+            wrapCls +
+            '">' +
             '<label for="' +
             id +
             '">' +
@@ -77,7 +86,9 @@
           );
         }
         return (
-          '<div class="ct-field sd-profile-field">' +
+          '<div class="' +
+          wrapCls +
+          '">' +
           '<label for="' +
           id +
           '">' +
@@ -130,9 +141,18 @@
 
           var vals = (dims && dims[dim.id]) || {};
           var inner = "";
+          if (dim.id === "guidance") {
+            inner +=
+              '<div class="sd-guidance-ai-bar">' +
+              '<button type="button" class="button secondary" id="sd-ai-guidance-btn">AI 生成</button>' +
+              '<span class="sd-ai-guidance-status" id="sd-ai-guidance-status" hidden></span>' +
+              "</div>";
+          }
+          inner += '<div class="sd-profile-fields-grid">';
           dim.fields.forEach(function (f) {
             inner += fieldInput(dim, f, vals[f.key] || "");
           });
+          inner += "</div>";
 
           var panel = document.createElement("div");
           panel.className = "card tab-panel sd-profile-panel sd-profile-body-card";
@@ -191,7 +211,47 @@
         var dims = rec ? StudentDataStore.mergeDisplayProfile(rec) : null;
         renderEditorPanels(StudentDataStore.profileSpec, dims);
 
-        document.getElementById("sd-content").value = (rec && rec.content) || "";
+        var listContentToSave = DEFAULT_LIST_CONTENT;
+        if (rec) {
+          var existingContent = String(rec.content || "").trim();
+          listContentToSave = existingContent || DEFAULT_LIST_CONTENT;
+        }
+
+        var aiBtn = document.getElementById("sd-ai-guidance-btn");
+        var aiStatus = document.getElementById("sd-ai-guidance-status");
+        if (aiBtn && window.StudentDataStore && typeof StudentDataStore.generateGuidanceWithAi === "function") {
+          aiBtn.addEventListener("click", async function () {
+            aiBtn.disabled = true;
+            if (aiStatus) {
+              aiStatus.hidden = false;
+              aiStatus.classList.remove("sd-ai-guidance-status--ok", "sd-ai-guidance-status--err");
+              aiStatus.classList.add("sd-ai-guidance-status--busy");
+              aiStatus.textContent = "正在生成成长指导内容，请稍候…";
+            }
+            try {
+              var profile = collectProfile();
+              var data = await StudentDataStore.generateGuidanceWithAi(profile, "");
+              var g = (data && data.guidance) || {};
+              ["termSummary", "courseFeedback", "shortTermAdvice", "longTermDevelopment"].forEach(function (k) {
+                var el = document.getElementById("sd-pf-guidance-" + k);
+                if (el && g[k] != null && String(g[k]).trim() !== "") el.value = String(g[k]).trim();
+              });
+              if (aiStatus) {
+                aiStatus.classList.remove("sd-ai-guidance-status--busy");
+                aiStatus.classList.add("sd-ai-guidance-status--ok");
+                aiStatus.textContent = "已填入生成结果，请核对后点击「保存」。";
+              }
+            } catch (e) {
+              if (aiStatus) {
+                aiStatus.classList.remove("sd-ai-guidance-status--busy");
+                aiStatus.classList.add("sd-ai-guidance-status--err");
+                aiStatus.textContent = (e && e.message) || String(e);
+              }
+            } finally {
+              aiBtn.disabled = false;
+            }
+          });
+        }
 
         var sub = document.getElementById("sd-editor-subtitle");
         if (sub && rec) {
@@ -207,7 +267,7 @@
           var r = {
             id: pageMode === "new" ? "" : recordId,
             profile: profile,
-            content: document.getElementById("sd-content").value.trim(),
+            content: listContentToSave,
           };
           r.name = (profile.basic && profile.basic.studentName) || "";
           r.studentId = (profile.basic && profile.basic.studentId) || "";

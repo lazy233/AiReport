@@ -7,7 +7,7 @@ from flask import Blueprint, redirect, render_template, request, url_for
 
 from ppt_report import config
 from ppt_report.models import db as db_mod
-from ppt_report.services.page_types import compute_chapter_selection_groups
+from ppt_report.services.page_types import compute_chapter_selection_groups, demo_chapter_selection_groups
 from ppt_report.services.presentation_cache import get_parsed_from_cache
 
 web_bp = Blueprint("web", __name__)
@@ -15,7 +15,7 @@ web_bp = Blueprint("web", __name__)
 
 @web_bp.get("/")
 def index():
-    return redirect(url_for("web.assistant_upload"))
+    return redirect(url_for("web.overview"))
 
 
 @web_bp.get("/upload")
@@ -63,7 +63,12 @@ def presentation_detail(task_id: str):
 def partial_generate_form():
     tid = (request.args.get("task_id") or "").strip()
     if not tid:
-        return '<p class="error">请先从列表中选择一份已解析的 PPT。</p>', 400
+        return render_template(
+            "partials/ppt/_generate_panel.html",
+            task_id="",
+            chapter_groups=demo_chapter_selection_groups(),
+            topic="",
+        )
     parsed = get_parsed_from_cache(tid)
     if not parsed:
         return (

@@ -32,7 +32,7 @@
 
   <section class="overview-section" aria-labelledby="overview-metrics-heading">
     <h2 id="overview-metrics-heading" class="overview-section-title">数据一览</h2>
-    <p class="overview-section-desc muted">与业务相关的条目数量（需连接数据库后才会统计）。</p>
+    <p class="overview-section-desc muted">与业务相关的条目数量。</p>
     <div class="overview-metrics">
       <a class="overview-metric-tile" href="{{ url_for('web.assistant_upload') }}">
         <span class="overview-metric-icon overview-metric-icon--blue" aria-hidden="true">
@@ -54,7 +54,7 @@
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
         </span>
         <span class="overview-metric-body">
-          <span class="overview-metric-label">文档生成记录</span>
+          <span class="overview-metric-label">报告生成记录</span>
           {% if overview.db_enabled %}
             <span class="overview-metric-value">{{ overview.generation_total }}</span>
             <span class="overview-metric-hint">本月 {{ overview.generation_this_month }} 条</span>
@@ -106,8 +106,8 @@
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
         </span>
         <span class="overview-quick-card-text">
-          <span class="overview-quick-card-title">文档生成</span>
-          <span class="overview-quick-card-desc">选择已解析模板，填写主题与章节参考，生成文案并导出 PPT</span>
+          <span class="overview-quick-card-title">报告生成</span>
+          <span class="overview-quick-card-desc">选择已解析成品报告，勾选章节与参考数据，按需填写额外条件后生成并导出 PPT</span>
         </span>
         <span class="overview-quick-card-arrow" aria-hidden="true">→</span>
       </a>
@@ -168,15 +168,15 @@
     <div class="overview-recent-head">
       <div>
         <h2 id="overview-recent-heading" class="overview-recent-title">最近生成</h2>
-        <p class="muted overview-recent-sub">最近几次文档生成任务，点击查看详情与导出。</p>
+        <p class="muted overview-recent-sub">最近几次报告生成任务，点击查看详情与导出。</p>
       </div>
       <a class="button secondary" href="{{ url_for('web.generation_history_list') }}">查看全部</a>
     </div>
     {% if not overview.db_enabled %}
       <p class="muted overview-recent-empty">数据库未连接，无法展示生成记录。配置 <code>DATABASE_URL</code> 并启动数据库服务后即可在此查看。</p>
     {% elif not recent_generations %}
-      <p class="muted overview-recent-empty">暂无生成记录。完成一次「文档生成」后，最近任务会出现在这里。</p>
-      <p class="overview-recent-cta"><a class="button" href="{{ url_for('web.assistant_generate') }}">去文档生成</a></p>
+      <p class="muted overview-recent-empty">暂无生成记录。完成一次「报告生成」后，最近任务会出现在这里。</p>
+      <p class="overview-recent-cta"><a class="button" href="{{ url_for('web.assistant_generate') }}">去报告生成</a></p>
     {% else %}
       <ul class="overview-recent-list">
         {% for row in recent_generations %}

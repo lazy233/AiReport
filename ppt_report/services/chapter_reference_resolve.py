@@ -30,7 +30,6 @@ _LABEL_HINTS: dict[str, str] = {
     "basic.major": "专业",
     "basic.gradeLevel": "年级",
     "basic.currentTerm": "学期",
-    "basic.reportSubtitle": "报告副标题",
     "basic.className": "班级",
     "basic.plannerTeacher": "规划老师",
     "learning.strongSubjects": "优势学科",
@@ -91,6 +90,21 @@ def ppt_chapter_slot_rows(parsed: dict[str, Any]) -> list[dict[str, Any]]:
     """仅 kind=chapter 的块，顺序与生成页 tab 一致。"""
     groups = compute_chapter_selection_groups(parsed)
     return [g for g in groups if str(g.get("kind") or "") == "chapter"]
+
+
+def ppt_reference_slot_rows(parsed: dict[str, Any]) -> list[dict[str, Any]]:
+    """首页（若存在，仅取第一个 cover）+ 各「章」块，顺序与生成页 Tab 一致，用于解析与 chapter_ref_json。"""
+    groups = compute_chapter_selection_groups(parsed)
+    rows: list[dict[str, Any]] = []
+    seen_cover = False
+    for g in groups:
+        k = str(g.get("kind") or "")
+        if k == "cover" and not seen_cover:
+            rows.append(g)
+            seen_cover = True
+        elif k == "chapter":
+            rows.append(g)
+    return rows
 
 
 def _slides_by_index(parsed: dict[str, Any]) -> dict[int, dict[str, Any]]:
@@ -251,15 +265,16 @@ def _dashscope_assign_fields(
 
     system_prompt = (
         "你是学业报告助手。用户上传的 PPT 是已填写好的成品报告（非空模板）。"
-        "每个 slot 的 pptChapterExcerpt 来自解析结果：包含该章对应各页的正文、标题、表格单元格等文本，以及组件类型线索。"
-        "请对照成品报告里「这一章实际在写什么、需要哪些数据」，把学生数据字段（仅用 field_catalog 里的 key）"
-        "分配到各章：每章只挂载与该章正文语义相关的字段；同一 key 可出现在多章若合理。"
-        "templateTitle 与 templateHint 来自章节模板，可作辅助；以 pptChapterExcerpt 为准判断内容需求。"
+        "每个 slot 的 pptChapterExcerpt 来自解析结果：包含该块对应各页的正文、标题、表格单元格等文本，以及组件类型线索。"
+        "首个 slot 可能为「首页/封面」：请根据成品首页中的标题、副标题、人名、日期等，分配姓名、学期、报告副标题等基础字段。"
+        "后续 slot 为各「章」：请对照成品里该章实际在写什么，把学生数据字段（仅用 field_catalog 里的 key）"
+        "分配到各块：每块只挂载与正文语义相关的字段；同一 key 可出现在多块若合理。"
+        "templateTitle 与 templateHint 来自章节模板或首页说明，可作辅助；以 pptChapterExcerpt 为准判断内容需求。"
         "不要编造 key；只使用 field_catalog 中出现的 key。"
         "只返回 JSON，不要 Markdown。"
     )
     user_obj = {
-        "task": "为每个 slotIndex 选择若干 field key（须结合 pptChapterExcerpt 成品报告正文）",
+        "task": "为每个 slotIndex 选择若干 field key（须结合 pptChapterExcerpt；含首页与各章）",
         "slots": slots_for_model,
         "field_catalog": field_catalog,
         "output_schema": {
@@ -376,64 +391,86 @@ def resolve_chapter_reference(
     if not stu:
         raise ValueError("未找到该学生数据。")
 
-    chapter_rows = ppt_chapter_slot_rows(parsed)
-    n_ppt = len(chapter_rows)
-    if n_ppt <= 0:
+    slot_rows = ppt_reference_slot_rows(parsed)
+    chapter_only = ppt_chapter_slot_rows(parsed)
+    n_ch = len(chapter_only)
+    if n_ch <= 0:
         raise ValueError("当前 PPT 未解析出「章」块，无法对齐章节模板。")
 
     titles, meta = template_chapter_titles(tpl)
     n_tpl = len(titles)
-    if n_tpl > n_ppt:
+    if n_tpl > n_ch:
         raise ValueError(
-            f"章节模板含 {n_tpl} 个章节，当前 PPT 仅 {n_ppt} 个「章」块，数量不匹配。",
+            f"章节模板含 {n_tpl} 个章节，当前 PPT 仅 {n_ch} 个「章」块，数量不匹配。",
         )
 
     flat = flatten_student_record(stu)
     key_to_field = {f["key"]: f for f in flat}
     valid_keys = set(key_to_field.keys())
 
+    num_slots = len(slot_rows)
     slots_for_model: list[dict[str, Any]] = []
-    for i in range(n_ppt):
-        title = titles[i] if i < len(titles) else ""
-        hint = ""
-        if i < len(meta):
-            hint = meta[i].get("hint") or ""
-        row = chapter_rows[i] if i < len(chapter_rows) else {}
+    ch_i = 0
+    for i in range(num_slots):
+        row = slot_rows[i] if i < len(slot_rows) else {}
+        kind = str(row.get("kind") or "")
         slide_list = row.get("slides") if isinstance(row, dict) else []
         excerpt = build_chapter_ppt_report_excerpt(parsed, slide_list or [])
-        slots_for_model.append(
-            {
-                "slotIndex": i,
-                "templateTitle": title,
-                "templateHint": hint,
-                "pptChapterExcerpt": excerpt,
-            },
-        )
+        if kind == "cover":
+            slots_for_model.append(
+                {
+                    "slotIndex": i,
+                    "templateTitle": "",
+                    "templateHint": "封面/首页：请在生成页「模板章节名」填写报告主标题（生成时将强制写入封面 title 文本框）。"
+                    "结合成品副标题、姓名、日期等位置分配学生基础信息字段。",
+                    "pptChapterExcerpt": excerpt,
+                },
+            )
+        else:
+            title = titles[ch_i] if ch_i < len(titles) else ""
+            hint = ""
+            if ch_i < len(meta):
+                hint = meta[ch_i].get("hint") or ""
+            ch_i += 1
+            slots_for_model.append(
+                {
+                    "slotIndex": i,
+                    "templateTitle": title,
+                    "templateHint": hint,
+                    "pptChapterExcerpt": excerpt,
+                },
+            )
 
     by_slot: dict[int, list[str]]
     if use_llm and valid_keys:
         try:
             catalog = _field_catalog_for_llm(flat)
             raw = _dashscope_assign_fields(slots_for_model, catalog)
-            by_slot = _normalize_assignments(raw, n_ppt, valid_keys)
+            by_slot = _normalize_assignments(raw, num_slots, valid_keys)
             # 若模型漏掉某些 slot，保持空；若全部为空且应有字段，用轮询兜底
             total_assigned = sum(len(v) for v in by_slot.values())
             if total_assigned == 0 and flat:
                 log.warning("模型未返回有效字段分配，使用轮询兜底")
-                by_slot = _fallback_round_robin(flat, n_ppt)
+                by_slot = _fallback_round_robin(flat, num_slots)
         except Exception:
             log.exception("大模型分配学生字段失败，使用轮询兜底")
-            by_slot = _fallback_round_robin(flat, n_ppt)
-    elif flat and n_ppt:
-        by_slot = _fallback_round_robin(flat, n_ppt)
+            by_slot = _fallback_round_robin(flat, num_slots)
+    elif flat and num_slots:
+        by_slot = _fallback_round_robin(flat, num_slots)
     else:
-        by_slot = {i: [] for i in range(n_ppt)}
+        by_slot = {i: [] for i in range(num_slots)}
 
     slots_out: list[dict[str, Any]] = []
-    for i, row in enumerate(chapter_rows):
+    ch_out = 0
+    for i, row in enumerate(slot_rows):
         slide_list = row.get("slides") or []
         slides_str = ",".join(str(int(s)) for s in slide_list if str(s).strip().isdigit())
-        title = titles[i] if i < len(titles) else ""
+        kind = str(row.get("kind") or "")
+        if kind == "cover":
+            title = ""
+        else:
+            title = titles[ch_out] if ch_out < len(titles) else ""
+            ch_out += 1
         keys = by_slot.get(i, [])
         fields = []
         for k in keys:

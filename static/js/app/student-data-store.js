@@ -15,14 +15,13 @@
         { key: "major", label: "专业方向" },
         { key: "gradeLevel", label: "年级" },
         { key: "currentTerm", label: "当前学期" },
-        { key: "reportSubtitle", label: "报告副标题" },
         { key: "serviceStart", label: "服务开始日期" },
         { key: "plannerTeacher", label: "规划老师" },
         { key: "studentId", label: "学号", detailHidden: true },
         { key: "className", label: "班级", detailHidden: true },
         { key: "email", label: "邮箱", detailHidden: true },
         { key: "phone", label: "手机", detailHidden: true },
-        { key: "remark", label: "备注", detailHidden: true }
+        { key: "remark", label: "备注", detailHidden: true, fullWidth: true }
       ]
     },
     {
@@ -34,9 +33,9 @@
         { key: "studyIntent", label: "升学意向" },
         { key: "careerIntent", label: "就业意向" },
         { key: "interestSubjects", label: "兴趣科目" },
-        { key: "longTermPlan", label: "长期规划" },
+        { key: "longTermPlan", label: "长期规划", fullWidth: true },
         { key: "learningStyle", label: "擅长学习方式" },
-        { key: "weakAreas", label: "薄弱环节" }
+        { key: "weakAreas", label: "薄弱环节", fullWidth: true }
       ]
     },
     {
@@ -49,7 +48,7 @@
         { key: "tutorSubjects", label: "辅导科目" },
         { key: "previewSubjects", label: "预习科目" },
         { key: "skillDirection", label: "技能提升方向" },
-        { key: "skillDescription", label: "技能提升描述" }
+        { key: "skillDescription", label: "技能提升描述", fullWidth: true }
       ]
     },
     {
@@ -160,8 +159,54 @@
       remark: cellValue(row, ["备注", "remark", "note", "说明"]),
       content: cellValue(row, ["数据内容", "content", "data", "正文", "生成数据", "ppt数据", "材料"])
     };
-    if (row && typeof row.profile === "object" && row.profile !== null) rec.profile = row.profile;
+    if (row && typeof row.profile === "object" && row.profile !== null) {
+      rec.profile = row.profile;
+    } else {
+      var profile = { basic: {}, learning: {}, hours: {}, guidance: {} };
+      PROFILE_SPEC.forEach(function (dim) {
+        dim.fields.forEach(function (f) {
+          var v = cellValue(row, [f.label, f.key]);
+          if (_normStr(v)) profile[dim.id][f.key] = _normStr(v);
+        });
+      });
+      rec.profile = profile;
+    }
     return normalizeRecord(rec);
+  }
+
+  function escapeCsvField(s) {
+    var t = String(s == null ? "" : s);
+    if (/[",\n\r]/.test(t)) {
+      return '"' + t.replace(/"/g, '""') + '"';
+    }
+    return t;
+  }
+
+  function buildImportTemplateCSV() {
+    var headers = [];
+    PROFILE_SPEC.forEach(function (dim) {
+      dim.fields.forEach(function (f) {
+        headers.push(f.label);
+      });
+    });
+    headers.push("数据内容");
+    return headers.map(escapeCsvField).join(",") + "\r\n";
+  }
+
+  function downloadImportTemplate() {
+    var csv = "\ufeff" + buildImportTemplateCSV();
+    var blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement("a");
+    a.href = url;
+    a.download = "学生数据导入模板.csv";
+    a.rel = "noopener";
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(function () {
+      URL.revokeObjectURL(url);
+    }, 1500);
   }
 
   function splitCSVLine(line) {
@@ -263,6 +308,18 @@
       await requestJson(API_BASE + "/" + encodeURIComponent(rid), { method: "DELETE" });
     },
 
+    generateGuidanceWithAi: async function (profile, content) {
+      var data = await requestJson(API_BASE + "/ai-guidance", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Accept: "application/json" },
+        body: JSON.stringify({
+          profile: profile && typeof profile === "object" ? profile : {},
+          content: content != null ? String(content) : ""
+        })
+      });
+      return data;
+    },
+
     importFromText: async function (text, kind) {
       var rows = kind === "json" ? parseJSONImport(text) : parseCSV(text).map(rowToRecord);
       var imported = 0;
@@ -312,7 +369,9 @@
       });
     },
 
-    mergeDisplayProfile: mergeDisplayProfile
+    mergeDisplayProfile: mergeDisplayProfile,
+
+    downloadImportTemplate: downloadImportTemplate
   };
 
   global.StudentDataStore = Store;

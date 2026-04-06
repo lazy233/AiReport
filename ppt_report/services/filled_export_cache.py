@@ -8,7 +8,7 @@ from pathlib import Path
 from pptx import Presentation
 
 from ppt_report import config
-from ppt_report.services.presentation_cache import resolve_template_path
+from ppt_report.services.presentation_cache import get_parsed_from_cache, resolve_template_path
 from ppt_report.services.pptx_document import apply_generation_to_presentation
 
 log = logging.getLogger(__name__)
@@ -23,7 +23,12 @@ def _path_for_id(history_id: str) -> Path | None:
     return config.FILLED_EXPORT_DIR / f"{hid}.pptx"
 
 
-def save_filled_export(history_id: str, task_id: str | None, generated: dict) -> bool:
+def save_filled_export(
+    history_id: str,
+    task_id: str | None,
+    generated: dict,
+    chapter_ref: dict | None = None,
+) -> bool:
     """将回填后的演示文稿写入 filled_exports/{history_id}.pptx。"""
     if not isinstance(generated, dict):
         return False
@@ -35,7 +40,14 @@ def save_filled_export(history_id: str, task_id: str | None, generated: dict) ->
         return False
     try:
         prs = Presentation(str(tpl))
-        apply_generation_to_presentation(prs, generated)
+        parsed = get_parsed_from_cache(task_id) if task_id else None
+        apply_generation_to_presentation(
+            prs,
+            generated,
+            parsed=parsed,
+            chapter_ref=chapter_ref if isinstance(chapter_ref, dict) else None,
+            task_id=task_id,
+        )
         config.FILLED_EXPORT_DIR.mkdir(parents=True, exist_ok=True)
         prs.save(str(out))
         return True

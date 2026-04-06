@@ -1,30 +1,42 @@
 <div class="generate-form-body">
-  <form id="ai-generate-form" method="post">
+  <form id="ai-generate-form" method="post"{% if not task_id %} data-demo="1"{% endif %}>
     <input type="hidden" name="action" value="generate" />
     <input type="hidden" name="task_id" value="{{ task_id or '' }}" />
     <div id="selected-slides-hidden" aria-hidden="true"></div>
     <input type="hidden" name="chapter_template_id" id="gen-chapter-template-id" value="" />
     <input type="hidden" name="student_data_id" id="gen-student-data-id" value="" />
     <input type="hidden" name="chapter_ref_json" id="gen-chapter-ref-json" value="" />
-    <p>
-      <label>主题</label>
-      <textarea name="topic" rows="2" required placeholder="例如：开学第一课 / 学期总结 / 活动方案">{{ topic or "" }}</textarea>
-      <span class="muted"><br />必填，作为生成文档内容的主要意图说明。</span>
-    </p>
-    <div class="gen-ref-toolbar">
+    <details class="gen-topic-fold">
+      <summary class="gen-topic-fold-summary">
+        <span class="gen-topic-fold-title">额外条件（可选）</span>
+        <span class="muted gen-topic-fold-hint">默认折叠；成品报告已有主题与正文，一般只需替换数据。需要时可在此补充生成约束。</span>
+      </summary>
+      <div class="gen-topic-fold-body">
+        <label class="gen-topic-fold-label" for="gen-topic-input">补充说明或约束</label>
+        <textarea
+          id="gen-topic-input"
+          name="topic"
+          form="ai-generate-form"
+          rows="3"
+          placeholder="例如：人称统一用「该生」；某处日期改为 2026 年春季；避免使用「同学」称呼……"
+        >{{ topic or "" }}</textarea>
+        <p class="muted gen-topic-fold-foot">可不填。填写后会并入模型提示，与章节参考数据一起在局部替换时生效。</p>
+      </div>
+    </details>
+    <div class="gen-ref-toolbar" id="gen-ref-toolbar">
       <div class="gen-ref-toolbar-row">
         <button type="button" class="button gen-btn-pick gen-btn-pick--template" data-gen-picker="chapter-template">
-          选择章节模板
+          章节模板
         </button>
         <button type="button" class="button gen-btn-pick gen-btn-pick--student" data-gen-picker="student-data">
-          选择学生数据
+          学生数据
         </button>
       </div>
     </div>
     <div class="gen-ref-strip" id="gen-ref-picks" hidden>
       <div class="gen-ref-strip-head">
         <span class="gen-ref-strip-title">已选引用</span>
-        <span class="gen-ref-strip-hint muted">可与「主题」一起，为本次生成提供额外上下文</span>
+        <span class="gen-ref-strip-hint muted">可与上方「额外条件」一起，为本次生成提供上下文</span>
       </div>
       <div class="gen-ref-chips" role="list">
         <div class="gen-ref-chip gen-ref-chip--template" id="gen-ref-pick-chapter-wrap" role="listitem" hidden>
@@ -60,15 +72,20 @@
       </div>
       <div class="gen-resolve-actions" id="gen-resolve-actions" hidden>
         <span class="gen-resolve-spinner" id="gen-resolve-spinner" hidden aria-hidden="true"></span>
-        <button type="button" class="button gen-btn-resolve" id="gen-resolve-to-ppt">
-          解析到 PPT
+        <p class="muted gen-resolve-hint" id="gen-resolve-hint">
+          章节模板与学生数据均选择后，将自动请求服务端解析到各「章」块与首页（大模型分配字段，约数十秒）。也可在下方点「重新解析」重试。
+        </p>
+        <button type="button" class="button secondary gen-btn-resolve-retry" id="gen-resolve-to-ppt">
+          重新解析
         </button>
-        <span class="muted gen-resolve-hint" id="gen-resolve-hint">
-          将章节模板中的章节名按顺序写入各「章」块，并由服务端大模型预挂学生字段（失败时自动轮询兜底）；可自行增删标签。点击后需等待服务端完成，约数十秒。
-        </span>
       </div>
     </div>
     {% if chapter_groups %}
+      {% if not task_id %}
+        <p class="muted generate-demo-banner">
+          以下为示例章节结构（示意页码）。在上方选择已解析的 PPT 后将替换为真实版式并支持生成。
+        </p>
+      {% endif %}
       <div class="gen-chapter-toolbar slide-actions chapter-tabs-toolbar">
         <button type="button" class="button gen-btn-chapter gen-btn-chapter--all" data-chapter-select="all">
           全选纳入
@@ -120,16 +137,24 @@
             </p>
             <div class="chapter-data-slot" data-chapter-data-root>
               <p class="muted chapter-data-nonchapter-note" data-non-chapter-note hidden>
-                本块为首页、目录或其他聚合页，不与「章节模板」中的章节逐条对应；学生字段挂载仅对下方「章」块开放。
+                本块为目录或其他聚合页，不与「章节模板」中的章节逐条对应；学生字段挂载仅对「首页」与各「章」块开放。
               </p>
               <div class="chapter-ref-body" data-chapter-ref-body>
                 <p class="chapter-data-slot-title">章节参考数据</p>
                 <div class="chapter-ref-template-row" hidden>
-                  <span class="muted chapter-ref-kicker">模板章节名</span>
-                  <strong class="chapter-ref-template-title"></strong>
+                  <label class="muted chapter-ref-kicker" for="gen-template-title-{{ loop.index0 }}">模板章节名</label>
+                  <input
+                    type="text"
+                    id="gen-template-title-{{ loop.index0 }}"
+                    class="chapter-ref-template-title-input"
+                    data-chapter-ref-template-title
+                    autocomplete="off"
+                    placeholder="{% if g.kind == 'cover' %}填写报告主标题，生成时写入封面标题{% else %}与章节模板对齐或自定义{% endif %}"
+                  />
                 </div>
                 <p class="muted chapter-ref-lead">
-                  学生字段以标签展示，默认一行，多出的可展开查看；点「解析到 PPT」将自动预分配，也可在下方下拉中手动添加或点标签上的 × 移除。
+                  「模板章节名」可编辑：首页 Tab 下请填写<strong>报告主标题</strong>（生成时将强制写入封面标题位）；章 Tab 下可与章节模板对齐或自行修改。
+                  学生字段以标签展示；章节模板与学生数据就绪后会自动解析预分配字段，也可在上方点「重新解析」。
                 </p>
                 <div class="chapter-ref-tags-shell" data-chapter-ref-tags-shell>
                   <div class="chapter-ref-tags" data-chapter-ref-tags aria-label="已挂载的学生字段"></div>
@@ -179,7 +204,7 @@
       <p class="error">未产生章节分组，请确认已成功解析且至少有一页内容。</p>
     {% endif %}
     <div style="margin-top: 14px; display: flex; flex-wrap: wrap; gap: 12px; align-items: center;">
-      <button type="submit" id="ai-generate-submit" {% if not chapter_groups %}disabled{% endif %}>生成并下载回填 PPT</button>
+      <button type="submit" id="ai-generate-submit" class="button">开始生成报告</button>
       <span class="muted">生成在后台进行，可随时查看下方进度；完成后在此查看文档内容并下载 PPT。</span>
     </div>
     <div id="generate-progress" class="generate-progress" role="status" aria-live="polite">

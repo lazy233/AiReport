@@ -49,8 +49,6 @@
 
     var rows = filtered
       .map(function (it) {
-        var preview = (it.content || "").replace(/\s+/g, " ").trim();
-        if (preview.length > 48) preview = preview.slice(0, 45) + "…";
         return (
           "<tr>" +
           "<td>" +
@@ -61,9 +59,6 @@
           "</td>" +
           "<td>" +
           esc(it.className || "—") +
-          "</td>" +
-          "<td class=\"sd-preview\">" +
-          esc(preview || "—") +
           "</td>" +
           "<td>" +
           esc(formatTime(it.updatedAt)) +
@@ -80,7 +75,7 @@
       .join("");
 
     mount.innerHTML =
-      '<table class="presentation-table sd-table"><thead><tr><th>姓名</th><th>学号</th><th>班级</th><th>数据摘要</th><th>更新时间</th><th>操作</th></tr></thead><tbody>' +
+      '<table class="presentation-table sd-table"><thead><tr><th>姓名</th><th>学号</th><th>班级</th><th>更新时间</th><th>操作</th></tr></thead><tbody>' +
       rows +
       "</tbody></table>";
   }
@@ -120,6 +115,17 @@
         if (search) search.value = "";
         runSearch();
       });
+
+    var tplBtn = document.getElementById("sd-csv-template-btn");
+    if (tplBtn && window.StudentDataStore && typeof StudentDataStore.downloadImportTemplate === "function") {
+      tplBtn.addEventListener("click", function () {
+        try {
+          StudentDataStore.downloadImportTemplate();
+        } catch (e) {
+          window.alert(e.message || String(e));
+        }
+      });
+    }
 
     var fileInput = document.getElementById("sd-bulk-file");
     if (fileInput) {

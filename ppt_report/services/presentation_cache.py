@@ -75,6 +75,7 @@ def purge_presentation(task_id: str) -> tuple[bool, str | None]:
         removed = True
     state.TEMPLATE_PATHS.pop(tid, None)
     state.LAST_GENERATION.pop(tid, None)
+    state.LAST_CHAPTER_REF.pop(tid, None)
 
     dest = config.UPLOAD_DIR / f"{tid}.pptx"
     if dest.is_file():

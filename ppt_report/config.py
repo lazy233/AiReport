@@ -41,7 +41,8 @@ DATABASE_URL = os.getenv(
 
 GENERATION_HARD_LENGTH_CAP = False
 GENERATION_SOFT_MAX_CHARS = int(os.getenv("GENERATION_SOFT_MAX_CHARS", "500000"))
-GENERATION_HEADING_MAX_CHARS = int(os.getenv("GENERATION_HEADING_MAX_CHARS", "6"))
+# 标题/副标题/占位符类组件的后处理字数上限（默认勿过小，否则 normalize 会把生成结果截成几个字符）
+GENERATION_HEADING_MAX_CHARS = int(os.getenv("GENERATION_HEADING_MAX_CHARS", "128"))
 
 
 def max_content_bytes() -> int:

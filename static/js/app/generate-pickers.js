@@ -62,6 +62,28 @@
     return true;
   }
 
+  var DEFAULT_CHAPTER_TEMPLATE_NAME = "学生学期规划报告";
+
+  async function applyDefaultChapterTemplate(form) {
+    if (!form) return;
+    var el = form.querySelector("#gen-chapter-template-id");
+    if (!el) return;
+    if ((el.value || "").trim()) return;
+    try {
+      var res = await fetch("/api/chapter-templates");
+      var data = await res.json();
+      if (!res.ok || !data.ok || !Array.isArray(data.items)) return;
+      var found = data.items.find(function (it) {
+        var n = (it.name || "").trim();
+        return n === DEFAULT_CHAPTER_TEMPLATE_NAME || n.indexOf(DEFAULT_CHAPTER_TEMPLATE_NAME) !== -1;
+      });
+      if (!found || !found.id) return;
+      await pickChapterTemplate(String(found.id), (found.name || "").trim() || DEFAULT_CHAPTER_TEMPLATE_NAME);
+    } catch (e) {
+      /* 静默失败，用户可手动选择 */
+    }
+  }
+
   async function pickChapterTemplate(id, primary) {
     var form = getForm();
     if (!form || !id) return false;
@@ -106,6 +128,9 @@
     strip.hidden = !tid && !sid;
     if (window.PptApp && window.PptApp.syncGenResolveRow) {
       window.PptApp.syncGenResolveRow();
+    }
+    if (window.PptApp && window.PptApp.syncGenerateSubmitEnabled) {
+      window.PptApp.syncGenerateSubmitEnabled();
     }
   }
 
@@ -315,7 +340,8 @@
     var clr = ev.target.closest("[data-gen-clear]");
     if (clr) {
       var f = getForm();
-      if (!f || !f.contains(clr)) return;
+      var refPicks = document.getElementById("gen-ref-picks");
+      if (!f || (!f.contains(clr) && (!refPicks || !refPicks.contains(clr)))) return;
       var which = clr.getAttribute("data-gen-clear");
       if (which === "chapter-template") setChapterTemplate("", "");
       else if (which === "student-data") setStudentData("", "");
@@ -324,4 +350,6 @@
 
   window.PptApp = window.PptApp || {};
   window.PptApp.syncGenerateRefPicksUi = syncRefPicksUi;
+  window.PptApp.applyDefaultChapterTemplate = applyDefaultChapterTemplate;
+  window.PptApp.pickChapterTemplate = pickChapterTemplate;
 })();

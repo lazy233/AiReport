@@ -26,13 +26,16 @@
       />
       <button type="button" class="button secondary" id="sd-search-btn">查询</button>
       <button type="button" class="button secondary" id="sd-refresh-btn">重置</button>
-      <label class="sd-bulk-label" style="margin-left: auto;">
-        <span class="button secondary" style="cursor: pointer; display: inline-block;">批量导入</span>
-        <input type="file" id="sd-bulk-file" accept=".csv,.json,text/csv,application/json" hidden />
-      </label>
+      <div class="sd-toolbar-actions">
+        <button type="button" class="button secondary" id="sd-csv-template-btn">下载导入模板</button>
+        <label class="sd-bulk-label">
+          <span class="button secondary" style="cursor: pointer; display: inline-block;">批量导入</span>
+          <input type="file" id="sd-bulk-file" accept=".csv,.json,text/csv,application/json" hidden />
+        </label>
+      </div>
     </div>
     <p class="muted" style="margin: 12px 0 0; font-size: 13px;">
-      批量导入：UTF-8 编码的 .csv / .json；CSV 首行为表头（如 姓名、学号、数据内容 等，支持中英文列名）。
+      可先下载 CSV 模板（表头与系统字段一致）；批量导入使用 UTF-8 编码的 .csv / .json，首行为表头，亦支持 姓名、学号、数据内容 等简写列名。
     </p>
     <div id="sd-bulk-message" hidden></div>
     <div id="sd-list-mount" class="table-scroll" style="margin-top: 16px;"></div>

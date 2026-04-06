@@ -1,10 +1,12 @@
 /**
  * 文档生成：解析到 PPT（前端）
- * - 调用 POST /api/resolve-chapter-reference：章节名按模板顺序；学生字段由服务端大模型分配。
+ * - 调用 POST /api/resolve-chapter-reference：首页（若有）+ 各章；章节名按模板顺序写入章块；学生字段由服务端大模型分配。
  */
 (function () {
   /** @type {Array<{key: string, label: string, value: string}> | null} */
   var cachedStudentFields = null;
+
+  var _autoResolveDebounce = null;
 
   function esc(s) {
     var d = document.createElement("div");
@@ -16,11 +18,73 @@
     return document.getElementById("ai-generate-form");
   }
 
+  /** @returns {string[]} 不满足生成条件时的提示列表（空数组表示可生成） */
+  function collectGenerateValidationMessages(form) {
+    var msgs = [];
+    if (!form) return ["表单未就绪。"];
+    var taskId = getTaskId(form);
+    if (!taskId) {
+      msgs.push("请先选择已解析的 PPT。");
+    }
+    if (!form.querySelector(".chapter-tabs")) {
+      msgs.push("章节结构未加载，请稍后重试或刷新页面。");
+    }
+    var tplId = (form.querySelector("#gen-chapter-template-id") || {}).value || "";
+    if (!String(tplId).trim()) {
+      msgs.push("请选择章节模板。");
+    }
+    var sid = (form.querySelector("#gen-student-data-id") || {}).value || "";
+    if (!String(sid).trim()) {
+      msgs.push("请选择学生数据。");
+    }
+    if (!form._chapterRefResolved) {
+      msgs.push(
+        "请等待「解析到 PPT」完成（字段分配成功后再生成）；若失败可点「重新解析」重试。",
+      );
+    }
+    if (!form.querySelector(".group-select:checked")) {
+      msgs.push("请至少勾选一个章节（纳入本次生成）。");
+    }
+    return msgs;
+  }
+
+  /** 章节引用解析 API 已成功执行过（更换模板/学生数据后会重置） */
+  function syncGenerateSubmitEnabled() {
+    var form = getForm();
+    var btn = document.getElementById("ai-generate-submit");
+    if (!form || !btn) return;
+    var progressWrap = document.getElementById("generate-progress");
+    if (progressWrap && progressWrap.classList.contains("is-running")) {
+      btn.disabled = true;
+      btn.setAttribute("title", "正在生成中，请稍候…");
+      btn.classList.remove("gen-submit--invalid");
+      return;
+    }
+    btn.disabled = false;
+    var msgs = collectGenerateValidationMessages(form);
+    if (msgs.length) {
+      btn.setAttribute("title", msgs.join(" "));
+      btn.classList.add("gen-submit--invalid");
+    } else {
+      btn.removeAttribute("title");
+      btn.classList.remove("gen-submit--invalid");
+    }
+  }
+
+  function isRefSlotKind(kind) {
+    return kind === "chapter" || kind === "cover";
+  }
+
+  /** 与服务端 chapter_ref slots 顺序一致：首页（若有）+ 各章 */
   function getChapterPanels(form) {
     if (!form) return [];
-    return Array.prototype.slice.call(
-      form.querySelectorAll('.chapter-tab-panel[data-panel-kind="chapter"]'),
-    );
+    var out = [];
+    var cov = form.querySelector('.chapter-tab-panel[data-panel-kind="cover"]');
+    if (cov) out.push(cov);
+    form.querySelectorAll('.chapter-tab-panel[data-panel-kind="chapter"]').forEach(function (p) {
+      out.push(p);
+    });
+    return out;
   }
 
   function getTaskId(form) {
@@ -148,11 +212,11 @@
       if (spin) spin.removeAttribute("hidden");
       if (hint) {
         hint.textContent =
-          "正在请求服务端，大模型正在为各章分配学生字段，请稍候（通常数十秒内完成）。界面未卡死，可继续滚动浏览。";
+          "正在请求服务端，大模型正在为首页与各章分配学生字段，请稍候（通常数十秒内完成）。界面未卡死，可继续滚动浏览。";
       }
       if (row) row.classList.add("is-busy");
     } else {
-      btn.textContent = btn.getAttribute("data-label-idle") || "解析到 PPT";
+      btn.textContent = btn.getAttribute("data-label-idle") || "重新解析";
       btn.disabled = false;
       btn.removeAttribute("aria-busy");
       if (spin) spin.setAttribute("hidden", "");
@@ -173,6 +237,21 @@
     });
   }
 
+  function scheduleAutoResolve() {
+    if (_autoResolveDebounce) clearTimeout(_autoResolveDebounce);
+    _autoResolveDebounce = setTimeout(function () {
+      _autoResolveDebounce = null;
+      var form = getForm();
+      if (!form) return;
+      var tid = (form.querySelector("#gen-chapter-template-id") || {}).value || "";
+      var sid = (form.querySelector("#gen-student-data-id") || {}).value || "";
+      if (!tid || !sid) return;
+      var btn = document.getElementById("gen-resolve-to-ppt");
+      if (btn && btn.getAttribute("aria-busy") === "true") return;
+      onResolveClick();
+    }, 450);
+  }
+
   function syncResolveRowVisibility() {
     var form = getForm();
     var row = document.getElementById("gen-resolve-actions");
@@ -180,6 +259,12 @@
     var tid = (form.querySelector("#gen-chapter-template-id") || {}).value || "";
     var sid = (form.querySelector("#gen-student-data-id") || {}).value || "";
     row.hidden = !(tid && sid);
+    if (tid && sid) {
+      scheduleAutoResolve();
+    } else if (_autoResolveDebounce) {
+      clearTimeout(_autoResolveDebounce);
+      _autoResolveDebounce = null;
+    }
   }
 
   function measureTagsOneRowHeight(wrap) {
@@ -295,8 +380,8 @@
     panels.forEach(function (panel, idx) {
       var cb = panel.querySelector(".group-select");
       var slides = cb ? cb.getAttribute("data-slides") || "" : "";
-      var titleEl = panel.querySelector(".chapter-ref-template-title");
-      var title = titleEl ? titleEl.textContent.trim() : "";
+      var titleInp = panel.querySelector("[data-chapter-ref-template-title]");
+      var title = titleInp ? titleInp.value.trim() : "";
       var fields = panel._attachedFields || [];
       var shots = panel._screenshots || [];
       payload.slots.push({
@@ -320,17 +405,19 @@
 
   function resetChapterReferenceUi(form) {
     if (!form) return;
+    form._chapterRefResolved = false;
     setResolveLoading(false);
     cachedStudentFields = null;
     form.__studentFieldsAll = null;
     var el = document.getElementById("gen-chapter-ref-json");
     if (el) el.value = "";
-    form.querySelectorAll('.chapter-tab-panel[data-panel-kind="chapter"]').forEach(function (panel) {
+    getChapterPanels(form).forEach(function (panel) {
       panel._attachedFields = [];
       var row = panel.querySelector(".chapter-ref-template-row");
-      var titleEl = panel.querySelector(".chapter-ref-template-title");
-      if (titleEl) titleEl.textContent = "";
-      if (row) row.hidden = true;
+      var titleInp = panel.querySelector("[data-chapter-ref-template-title]");
+      if (titleInp) titleInp.value = "";
+      var kindReset = panel.getAttribute("data-panel-kind") || "";
+      if (row) row.hidden = !isRefSlotKind(kindReset);
       panel._tagsExpanded = false;
       renderTags(panel);
       var sel = panel.querySelector("[data-chapter-ref-select]");
@@ -340,6 +427,7 @@
       setScreenshotStatus(panel, "", false);
     });
     syncResolveRowVisibility();
+    syncGenerateSubmitEnabled();
   }
 
   function initPanelLayout(form) {
@@ -347,12 +435,15 @@
       var kind = panel.getAttribute("data-panel-kind") || "";
       var note = panel.querySelector("[data-non-chapter-note]");
       var body = panel.querySelector("[data-chapter-ref-body]");
-      if (kind === "chapter") {
+      var trow = panel.querySelector(".chapter-ref-template-row");
+      if (isRefSlotKind(kind)) {
         if (note) note.hidden = true;
         if (body) body.hidden = false;
+        if (trow) trow.hidden = false;
       } else {
         if (note) note.hidden = false;
         if (body) body.hidden = true;
+        if (trow) trow.hidden = true;
       }
     });
   }
@@ -367,11 +458,11 @@
     var taskId = (taskInp && taskInp.value) || "";
     if (!tid || !sid) return;
     if (!taskId.trim()) {
-      window.alert("缺少当前 PPT 任务 ID，请重新选择模板。");
       return;
     }
     var panels = getChapterPanels(form);
-    if (!panels.length) {
+    var hasChapter = !!form.querySelector('.chapter-tab-panel[data-panel-kind="chapter"]');
+    if (!hasChapter) {
       window.alert("当前 PPT 未识别到「章」块，无法对齐章节模板。");
       return;
     }
@@ -399,9 +490,10 @@
         var slot = slots[idx] || {};
         var title = String(slot.templateTitle || "").trim();
         var row = panel.querySelector(".chapter-ref-template-row");
-        var titleEl = panel.querySelector(".chapter-ref-template-title");
-        if (titleEl) titleEl.textContent = title;
-        if (row) row.hidden = !title;
+        var titleInp = panel.querySelector("[data-chapter-ref-template-title]");
+        var pkind = (panel.getAttribute("data-panel-kind") || "").trim();
+        if (titleInp) titleInp.value = title;
+        if (row) row.hidden = !isRefSlotKind(pkind);
         var flist = Array.isArray(slot.fields) ? slot.fields : [];
         panel._attachedFields = flist.map(function (f) {
           return {
@@ -430,10 +522,13 @@
       });
       refreshAllSelects(form);
       updateHiddenJson(form);
+      form._chapterRefResolved = true;
     } catch (e) {
+      form._chapterRefResolved = false;
       window.alert(e.message || String(e));
     } finally {
       setResolveLoading(false);
+      syncGenerateSubmitEnabled();
     }
   }
 
@@ -445,12 +540,20 @@
       if (!Array.isArray(p._screenshots)) p._screenshots = [];
       bindScreenshotPanel(form, p);
     });
+    if (!form._chRefTitleInputBound) {
+      form._chRefTitleInputBound = true;
+      form.addEventListener("input", function (ev) {
+        if (ev.target && ev.target.matches && ev.target.matches("[data-chapter-ref-template-title]")) {
+          updateHiddenJson(form);
+        }
+      });
+    }
     var btn = document.getElementById("gen-resolve-to-ppt");
     if (btn && !btn.getAttribute("data-ch-ref-bound")) {
       btn.setAttribute("data-ch-ref-bound", "1");
       btn.addEventListener("click", onResolveClick);
     }
-    form.querySelectorAll('.chapter-tab-panel[data-panel-kind="chapter"]').forEach(function (panel) {
+    getChapterPanels(form).forEach(function (panel) {
       if (panel._chRefAddBound) return;
       panel._chRefAddBound = true;
       var addBtn = panel.querySelector(".chapter-ref-add-btn");
@@ -481,8 +584,8 @@
       form.addEventListener("click", function (ev) {
         var rmShot = ev.target.closest(".chapter-ref-screenshot-remove");
         if (rmShot && form.contains(rmShot)) {
-          var spanel = rmShot.closest('.chapter-tab-panel[data-panel-kind="chapter"]');
-          if (!spanel) return;
+          var spanel = rmShot.closest(".chapter-tab-panel");
+          if (!spanel || !isRefSlotKind(spanel.getAttribute("data-panel-kind") || "")) return;
           var six = parseInt(rmShot.getAttribute("data-shot-index") || "-1", 10);
           if (!Number.isFinite(six) || six < 0) return;
           var slist = spanel._screenshots || [];
@@ -506,16 +609,16 @@
         }
         var tagToggle = ev.target.closest("[data-chapter-ref-tags-toggle]");
         if (tagToggle && form.contains(tagToggle)) {
-          var tpan = tagToggle.closest('.chapter-tab-panel[data-panel-kind="chapter"]');
-          if (!tpan) return;
+          var tpan = tagToggle.closest(".chapter-tab-panel");
+          if (!tpan || !isRefSlotKind(tpan.getAttribute("data-panel-kind") || "")) return;
           tpan._tagsExpanded = !tpan._tagsExpanded;
           syncTagsCollapsedState(tpan);
           return;
         }
         var rm = ev.target.closest(".chapter-ref-tag-remove");
         if (!rm || !form.contains(rm)) return;
-        var panel = rm.closest('.chapter-tab-panel[data-panel-kind="chapter"]');
-        if (!panel) return;
+        var panel = rm.closest(".chapter-tab-panel");
+        if (!panel || !isRefSlotKind(panel.getAttribute("data-panel-kind") || "")) return;
         var idx = parseInt(rm.getAttribute("data-tag-index") || "-1", 10);
         if (!Number.isFinite(idx) || idx < 0) return;
         panel._attachedFields = panel._attachedFields || [];
@@ -526,10 +629,14 @@
       });
     }
     syncResolveRowVisibility();
+    syncGenerateSubmitEnabled();
   }
 
   window.PptApp = window.PptApp || {};
   window.PptApp.initChapterReferenceUi = bindForm;
   window.PptApp.syncGenResolveRow = syncResolveRowVisibility;
   window.PptApp.resetChapterReferenceUi = resetChapterReferenceUi;
+  window.PptApp.triggerResolveChapterReference = onResolveClick;
+  window.PptApp.syncGenerateSubmitEnabled = syncGenerateSubmitEnabled;
+  window.PptApp.collectGenerateValidationMessages = collectGenerateValidationMessages;
 })();

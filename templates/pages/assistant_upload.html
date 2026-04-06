@@ -2,25 +2,23 @@
 {% block title %}PPT模板管理{% endblock %}
 
 {% block content %}
-  <div class="card hero assistant-intro">
-    <h1>PPT模板管理</h1>
-    <p class="muted">
-      在下方<strong>上传</strong>新增模板；列表中可对已有模板<strong>改名、替换文件（重新解析）、删除</strong>。
-      解析为本地读取结构，并尽量调用大模型标注每页类型（首页/目录/章节等）。
-      完整结构见<strong>详情</strong>；生成文档请前往<strong>文档生成</strong>页选用模板。
-      当前文件大小上限：{{ max_upload_mb or 200 }}MB。
-    </p>
-  </div>
-
   {% include "partials/ppt/_upload_panel.html" %}
 
   <div class="card">
     <div class="section-head">
-      <div>
-        <h2>已上传的 PPT</h2>
-        <p class="muted" style="margin: 0;">列表按文件名、页数与解析方式展示；操作列可进入详情或维护条目。</p>
-      </div>
+      <h2 style="margin: 0;">已上传的 PPT</h2>
       <button type="button" class="button secondary" id="presentation-list-refresh">刷新列表</button>
+    </div>
+    <div class="presentation-list-toolbar">
+      <label for="presentation-list-search" class="presentation-list-search-label">搜索</label>
+      <input
+        type="search"
+        id="presentation-list-search"
+        class="presentation-list-search-input"
+        placeholder="文件名、页数、解析方式、任务 ID…"
+        autocomplete="off"
+        enterkeyhint="search"
+      />
     </div>
     {% if not db_enabled %}
       <p class="error">未连接 PostgreSQL（请检查 DATABASE_URL 与数据库服务）。解析结果会尽量留在内存中，刷新页面后列表可能为空。</p>

@@ -21,7 +21,7 @@
     var head = document.createElement("div");
     head.className = "section-head";
     head.innerHTML =
-      '<div><h2>文档生成结果</h2><p class="muted">各页可填内容默认折叠；展开后可逐条查看、复制，或直接下载回填后的 PPT。</p></div>';
+      '<div><h2>报告生成结果</h2><p class="muted">各页可填内容默认折叠；展开后可逐条查看、复制，或直接下载回填后的 PPT。</p></div>';
     card.appendChild(head);
     if (taskId) {
       var row = document.createElement("div");
@@ -225,6 +225,9 @@
       groupCb.addEventListener("change", function () {
         syncChapterSelectionToForm();
         syncChapterTabIncludedMarkers(genForm);
+        if (window.PptApp && window.PptApp.syncGenerateSubmitEnabled) {
+          window.PptApp.syncGenerateSubmitEnabled();
+        }
       });
     });
 
@@ -237,6 +240,9 @@
         });
         syncChapterSelectionToForm();
         syncChapterTabIncludedMarkers(genForm);
+        if (window.PptApp && window.PptApp.syncGenerateSubmitEnabled) {
+          window.PptApp.syncGenerateSubmitEnabled();
+        }
       });
     }
     if (chNone) {
@@ -246,6 +252,9 @@
         });
         syncChapterSelectionToForm();
         syncChapterTabIncludedMarkers(genForm);
+        if (window.PptApp && window.PptApp.syncGenerateSubmitEnabled) {
+          window.PptApp.syncGenerateSubmitEnabled();
+        }
       });
     }
     syncChapterSelectionToForm();
@@ -264,7 +273,16 @@
     var genSubmit = genForm.querySelector("#ai-generate-submit");
 
     function setGenUiRunning(isRun) {
-      if (genSubmit) genSubmit.disabled = isRun;
+      if (genSubmit) {
+        if (isRun) {
+          genSubmit.disabled = true;
+          genSubmit.classList.remove("gen-submit--invalid");
+        } else if (window.PptApp && window.PptApp.syncGenerateSubmitEnabled) {
+          window.PptApp.syncGenerateSubmitEnabled();
+        } else {
+          genSubmit.disabled = false;
+        }
+      }
       if (!progressWrap) return;
       progressWrap.classList.toggle("is-visible", isRun || !!(progressErr && !progressErr.hidden));
       progressWrap.classList.toggle("is-running", isRun);
@@ -290,22 +308,23 @@
 
     genForm.addEventListener("submit", async function (e) {
       e.preventDefault();
+      if (genSubmit && genSubmit.disabled) {
+        return;
+      }
+      syncChapterSelectionToForm();
+      var preMsgs =
+        window.PptApp && window.PptApp.collectGenerateValidationMessages
+          ? window.PptApp.collectGenerateValidationMessages(genForm)
+          : [];
+      if (preMsgs.length) {
+        window.alert(preMsgs.join("\n"));
+        return;
+      }
       if (progressErr) {
         progressErr.hidden = true;
         progressErr.textContent = "";
       }
-      syncChapterSelectionToForm();
       var fd = new FormData(genForm);
-      var selectedHidden = genForm.querySelectorAll('input[name="selected_slides"]');
-      if (!selectedHidden.length) {
-        if (progressErr) {
-          progressErr.hidden = false;
-          progressErr.textContent = "请至少勾选一个章节。";
-        }
-        setGenUiRunning(false);
-        if (progressWrap) progressWrap.classList.add("is-visible");
-        return;
-      }
       setGenUiRunning(true);
       if (progressBar) progressBar.style.width = "2%";
       if (progressMsg) progressMsg.textContent = "正在提交任务…";

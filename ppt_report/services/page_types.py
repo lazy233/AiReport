@@ -152,6 +152,28 @@ def compute_chapter_selection_groups(parsed: dict) -> list[dict]:
     return groups
 
 
+def demo_chapter_selection_groups() -> list[dict]:
+    """未选择 PPT 时用于界面展示的示例章节分组（幻灯片页码为示意，不可真实生成）。"""
+    raw: list[tuple[str, str, str, list[int]]] = [
+        ("sel_cover", "cover", "首页", [1]),
+        ("sel_toc", "toc", "目录", [2]),
+        ("sel_chapter_1", "chapter", "第 1 章（第 3–4 页）", [3, 4]),
+        ("sel_chapter_2", "chapter", "第 2 章（第 5–6 页）", [5, 6]),
+        ("sel_chapter_3", "chapter", "第 3 章（第 7–8 页）", [7, 8]),
+        ("sel_chapter_4", "chapter", "第 4 章（第 9–11 页）", [9, 10, 11]),
+        ("sel_chapter_5", "chapter", "第 5 章（第 12–14 页）", [12, 13, 14]),
+        ("sel_chapter_6", "chapter", "第 6 章（第 15–18 页）", [15, 16, 17, 18]),
+        ("sel_chapter_7", "chapter", "第 7 章（第 19–23 页）", [19, 20, 21, 22, 23]),
+        ("sel_chapter_8", "chapter", "第 8 章（第 24–25 页）", [24, 25]),
+    ]
+    groups: list[dict] = []
+    for eid, kind, label, slides in raw:
+        entry: dict = {"id": eid, "kind": kind, "label": label, "slides": slides}
+        entry["default_selected"] = any(int(s) <= 5 for s in slides)
+        groups.append(entry)
+    return groups
+
+
 def classify_page_types_with_bailian(parsed: dict) -> dict:
     api_key = os.getenv("DASHSCOPE_API_KEY") or os.getenv("OPENAI_API_KEY")
     model = os.getenv("DASHSCOPE_MODEL", "qwen3-max")

@@ -40,6 +40,7 @@ from ppt_report.services.presentation_cache import (
     resolve_template_path,
 )
 from ppt_report.services.pptx_document import apply_generation_to_presentation
+from ppt_report.services.student_guidance_ai import generate_student_guidance
 from ppt_report.utils.files import allowed_file
 
 api_bp = Blueprint("api", __name__, url_prefix="/api")
@@ -61,6 +62,24 @@ def api_student_data_list():
     q = (request.args.get("q") or "").strip()
     items = db_mod.list_student_records(query=q)
     return jsonify({"ok": True, "items": items, "count": len(items)})
+
+
+@api_bp.post("/student-data/ai-guidance")
+def api_student_data_ai_guidance():
+    """根据基础信息、学习画像、课时数据等生成成长指导四维文案。"""
+    body: dict[str, Any] = request.get_json(silent=True) or {}
+    profile = body.get("profile")
+    if not isinstance(profile, dict):
+        profile = {}
+    content = body.get("content")
+    content_s = (content if isinstance(content, str) else "").strip()
+    try:
+        guidance = generate_student_guidance(profile, content_s)
+    except RuntimeError as exc:
+        return jsonify({"ok": False, "error": str(exc)}), 400
+    except Exception:
+        return jsonify({"ok": False, "error": "生成失败，请稍后重试。"}), 500
+    return jsonify({"ok": True, "guidance": guidance})
 
 
 @api_bp.get("/student-data/<record_id>")
@@ -359,7 +378,9 @@ def api_generate_start():
     err, merged_extra = merge_extra_from_upload("", None)
     if err:
         return jsonify({"ok": False, "error": err}), 400
-    err = validate_generate_prerequisites(task_id, topic, merged_extra, selected_slides)
+    err = validate_generate_prerequisites(
+        task_id, topic, merged_extra, selected_slides, chapter_ref
+    )
     if err:
         return jsonify({"ok": False, "error": err}), 400
     job_id = _create_generate_job_record(task_id)
@@ -428,11 +449,31 @@ def api_export():
     if not generated:
         return jsonify({"ok": False, "error": "请先生成文档内容，或在 body 中传入 data。"}), 400
     prs = Presentation(str(template_path))
-    apply_generation_to_presentation(prs, generated)
+    parsed_export = get_parsed_from_cache(task_id)
+    cr = body.get("chapter_ref")
+    if not isinstance(cr, dict):
+        crj = body.get("chapter_ref_json")
+        if isinstance(crj, str) and crj.strip():
+            try:
+                loaded = json.loads(crj)
+                cr = loaded if isinstance(loaded, dict) else None
+            except (json.JSONDecodeError, TypeError, ValueError):
+                cr = None
+        if not isinstance(cr, dict):
+            cr = state.LAST_CHAPTER_REF.get(task_id)
+    if not isinstance(cr, dict):
+        cr = None
+    apply_generation_to_presentation(
+        prs,
+        generated,
+        parsed=parsed_export,
+        chapter_ref=cr,
+        task_id=task_id,
+    )
     buf = io.BytesIO()
     prs.save(buf)
     buf.seek(0)
-    meta = get_parsed_from_cache(task_id) or {}
+    meta = parsed_export or {}
     raw_name = meta.get("file_name") or "presentation.pptx"
     stem = Path(raw_name).stem
     return send_file(
@@ -456,11 +497,21 @@ def export_filled_pptx(task_id: str):
     if not generated:
         return "请先生成文档内容，再下载填充后的 PPT。", 400
     prs = Presentation(str(template_path))
-    apply_generation_to_presentation(prs, generated)
+    parsed_export = get_parsed_from_cache(task_id)
+    cr = state.LAST_CHAPTER_REF.get(task_id)
+    if not isinstance(cr, dict):
+        cr = None
+    apply_generation_to_presentation(
+        prs,
+        generated,
+        parsed=parsed_export,
+        chapter_ref=cr,
+        task_id=task_id,
+    )
     buf = io.BytesIO()
     prs.save(buf)
     buf.seek(0)
-    meta = get_parsed_from_cache(task_id) or {}
+    meta = parsed_export or {}
     raw_name = meta.get("file_name") or "presentation.pptx"
     stem = Path(raw_name).stem
     return send_file(

@@ -2,6 +2,9 @@
  * 上传页：已解析列表（数据库）— 查 / 改名 / 替换 / 删
  */
 (function () {
+  /** @type {Array<object>} */
+  var allPresentationItems = [];
+
   function getQueryParam(name) {
     var m = new RegExp("[?&]" + name + "=([^&#]*)").exec(window.location.search);
     return m ? decodeURIComponent(m[1].replace(/\+/g, " ")) : "";
@@ -153,7 +156,50 @@
     }
   }
 
-  function renderTable(items) {
+  function getPresentationSearchParts() {
+    var input = document.getElementById("presentation-list-search");
+    var raw = input ? String(input.value || "").trim() : "";
+    if (!raw) return { parts: [], raw: "" };
+    var parts = raw
+      .toLowerCase()
+      .split(/\s+/)
+      .filter(function (p) {
+        return p.length > 0;
+      });
+    return { parts: parts, raw: raw };
+  }
+
+  function matchesPresentationSearch(it, parts) {
+    if (!parts || !parts.length) return true;
+    var hay = [
+      it.file_name,
+      it.parse_impl,
+      it.task_id,
+      String(it.slide_count != null ? it.slide_count : ""),
+      formatTime(it.created_at),
+    ]
+      .join(" ")
+      .toLowerCase();
+    for (var i = 0; i < parts.length; i++) {
+      if (hay.indexOf(parts[i]) === -1) return false;
+    }
+    return true;
+  }
+
+  function applyPresentationFilter() {
+    var sp = getPresentationSearchParts();
+    var filtered = allPresentationItems.filter(function (it) {
+      return matchesPresentationSearch(it, sp.parts);
+    });
+    renderTable(filtered, {
+      total: allPresentationItems.length,
+      searchRaw: sp.raw,
+      hasActiveSearch: sp.parts.length > 0,
+    });
+  }
+
+  function renderTable(items, filterCtx) {
+    filterCtx = filterCtx || {};
     var wrap = document.getElementById("presentation-list-table");
     var loading = document.getElementById("presentation-list-loading");
     var empty = document.getElementById("presentation-list-empty");
@@ -161,7 +207,15 @@
     if (loading) loading.hidden = true;
     if (!items || !items.length) {
       wrap.hidden = true;
-      if (empty) empty.hidden = false;
+      if (empty) {
+        empty.hidden = false;
+        if (filterCtx.hasActiveSearch && filterCtx.total > 0) {
+          empty.textContent =
+            "没有与「" + filterCtx.searchRaw + "」匹配的模板，请尝试调整关键词或多词用空格分隔。";
+        } else {
+          empty.textContent = "暂无记录，请先上传并解析一份 PPT。";
+        }
+      }
       return;
     }
     if (empty) empty.hidden = true;
@@ -244,7 +298,8 @@
       var res = await fetch("/api/presentations");
       var data = await res.json();
       if (!data.ok) throw new Error(data.error || "列表加载失败");
-      renderTable(data.items || []);
+      allPresentationItems = data.items || [];
+      applyPresentationFilter();
       var doneId = getQueryParam("parsed");
       var doneName = getQueryParam("parsed_name");
       if (doneId) {
@@ -252,7 +307,7 @@
         if (flash) {
           flash.hidden = false;
           flash.textContent = doneName
-            ? "解析已完成并保存：「" + doneName + "」。可在下表打开「详情」或前往文档生成页选用。"
+            ? "解析已完成并保存：「" + doneName + "」。可在下表打开「详情」或前往报告生成页选用。"
             : "解析已完成并保存。可在下表打开「详情」查看完整结构。";
         }
         setQueryParam("parsed", "");
@@ -270,6 +325,20 @@
     bindReplaceFileInput();
     var refresh = document.getElementById("presentation-list-refresh");
     if (refresh) refresh.addEventListener("click", loadPresentationList);
+    var search = document.getElementById("presentation-list-search");
+    if (search) {
+      var debounceTimer;
+      search.addEventListener("input", function () {
+        clearTimeout(debounceTimer);
+        debounceTimer = setTimeout(function () {
+          applyPresentationFilter();
+        }, 160);
+      });
+      search.addEventListener("search", function () {
+        clearTimeout(debounceTimer);
+        applyPresentationFilter();
+      });
+    }
     loadPresentationList();
   }
 
