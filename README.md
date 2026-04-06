@@ -62,16 +62,22 @@ python app.py
 
 ### 2. 构建并启动
 
+**推荐使用 Compose V2**（命令为 `docker compose`，中间有空格）。Docker Engine 25+ 与旧版独立 **`docker-compose` 1.x** 组合时，重建容器可能出现 **`KeyError: 'ContainerConfig'`**，需改用 V2：
+
 ```bash
+sudo apt-get update && sudo apt-get install -y docker-compose-plugin
+docker compose version
+cd /opt/AiReport
 docker compose up -d --build
-# 若系统只有旧版独立命令，请用：docker-compose up -d --build
 ```
 
+若已用旧命令建过容器，可先在同一目录执行 `docker compose down` 再 `docker compose up -d --build`（数据卷默认保留，除非加 `-v`）。日常仅更新镜像时在项目目录执行 `docker compose up -d --build` 即可。
+
 **构建阶段 pip 超时**：若日志出现 `Read timed out` 连接 `files.pythonhosted.org`，多为访问 PyPI 不稳定。`Dockerfile` 已设置较长超时并默认使用清华 PyPI 镜像；拉取最新代码后重新 `--build` 即可。若在境外需使用官方索引，可先执行  
-`docker-compose build --build-arg PIP_INDEX_URL=https://pypi.org/simple web`，再 `docker-compose up -d`。
+`docker compose build --build-arg PIP_INDEX_URL=https://pypi.org/simple web`，再 `docker compose up -d`。
 
 **构建阶段 apt 很慢**：`apt-get` 访问 `deb.debian.org` 在国内常偏慢。`Dockerfile` 默认在 `apt-get update` 前把 Debian 源换为 **阿里云**（`USE_CN_APT_MIRROR=1`）。境外构建可关闭：  
-`docker-compose build --build-arg USE_CN_APT_MIRROR=0 web`。
+`docker compose build --build-arg USE_CN_APT_MIRROR=0 web`。
 
 浏览器访问：`http://<服务器IP>:5000`（默认映射宿主机 `5000`，可通过 `.env` 中 `HOST_PORT` 修改）。
 
