@@ -17,8 +17,9 @@ services:
       POSTGRES_DB: ${POSTGRES_DB:-ppt_report_platform}
     volumes:
       - pgdata:/var/lib/postgresql/data
+    # 必须带 -U/-d：否则 pg_isready 会以系统用户 root 作为 PG 角色探测，触发 role "root" does not exist
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready"]
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
       interval: 5s
       timeout: 5s
       retries: 10
