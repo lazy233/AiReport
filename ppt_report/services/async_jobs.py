@@ -102,7 +102,7 @@ def _parse_job_worker(
         try:
             parsed = classify_page_types_with_bailian(parsed)
         except Exception:
-            pass
+            log.warning("大模型页类型识别失败，将仅保留本地解析结果", exc_info=True)
         if rid:
             out_task_id = rid
             dest = config.UPLOAD_DIR / f"{out_task_id}.pptx"
