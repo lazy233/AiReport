@@ -9,7 +9,12 @@ RUN apt-get update \
     && rm -rf /var/lib/apt/lists/*
 
 COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+# pip 访问 files.pythonhosted.org 在国内易超时；加长超时并支持构建参数换源
+# 海外构建可：docker-compose build --build-arg PIP_INDEX_URL=https://pypi.org/simple web
+ARG PIP_INDEX_URL=https://pypi.tuna.tsinghua.edu.cn/simple
+RUN pip install --no-cache-dir --default-timeout=300 \
+    -i "${PIP_INDEX_URL}" \
+    -r requirements.txt
 
 COPY . .
 
