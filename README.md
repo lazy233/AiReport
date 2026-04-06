@@ -50,6 +50,36 @@ python app.py
 
 生产环境请使用 WSGI 服务器挂载 `app:app`，勿长期以 `debug=True` 暴露公网。
 
+## 服务器部署（Docker）
+
+仓库内提供 `Dockerfile` 与 `docker-compose.yml`：一键启动 **PostgreSQL + Web**（Gunicorn），上传与生成文件持久化在名为 `uploads` 的 Docker 卷中。
+
+### 1. 准备环境变量
+
+将 `.env.example` 复制为 `.env`（Linux/macOS：`cp`；Windows：`copy .env.example .env`），再编辑：至少设置 `POSTGRES_PASSWORD`（勿用默认 `changeme`）、`DASHSCOPE_API_KEY`。
+
+`docker-compose.yml` 会用 `environment` 中的 `DATABASE_URL` 指向服务名 `db`，**不要**在容器内把库写成 `127.0.0.1`。若数据库密码含 `@ : /` 等字符，需对密码做 URL 编码后再写入连接串，或改用仅字母数字的强密码。
+
+### 2. 构建并启动
+
+```bash
+docker compose up -d --build
+```
+
+浏览器访问：`http://<服务器IP>:5000`（默认映射宿主机 `5000`，可通过 `.env` 中 `HOST_PORT` 修改）。
+
+### 3. 表结构从哪里来？
+
+应用首次连接数据库时会执行 SQLAlchemy `create_all`，自动创建 `parsed_presentations`、`generation_histories`、`students` 等业务表，**一般不需要手工导入 DDL**。
+
+### 4. 已有 PostgreSQL、不用 Compose 跑库时
+
+在服务器上自建实例后，仅创建空库与账号即可，例如使用仓库内脚本：
+
+- `deploy/sql/01_create_database.sql`（按注释修改用户名/密码/库名后执行）
+
+然后将应用容器的 `DATABASE_URL` 指向该实例（主机名填 Docker 可访问的地址，如同宿主机可填 `host.docker.internal` 或网关 IP，视环境而定）。
+
 ## 主要环境变量
 
 | 变量 | 说明 |
@@ -71,6 +101,8 @@ python app.py
 - `ppt_report/`：Flask 应用工厂、蓝图、业务服务（解析、生成、缓存、异步任务等）。
 - `static/`、`templates/`：前端静态资源与 Jinja 模板。
 - `uploads/`：上传与生成导出缓存目录（运行时创建）。
+- `Dockerfile` / `docker-compose.yml`：容器化部署。
+- `deploy/sql/`：仅「建库建账号」示例 SQL；业务表由应用自动创建。
 
 ## 许可证与贡献
 

@@ -1,0 +1,44 @@
+# AiReport + PostgreSQL（Docker Compose）
+# 用法：复制 .env.example 为 .env，填写 DASHSCOPE_API_KEY 与数据库密码等，再执行：
+#   docker compose up -d --build
+#
+# 访问：http://<服务器IP>:5000
+
+name: aireport
+
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-pptreport}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-changeme}
+      POSTGRES_DB: ${POSTGRES_DB:-ppt_report_platform}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  web:
+    build: .
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "${HOST_PORT:-5000}:5000"
+    # 连接 Compose 内数据库（主机名 db）。项目根目录 .env 中的变量会参与 ${...} 替换。
+    environment:
+      DATABASE_URL: postgresql+psycopg2://${POSTGRES_USER:-pptreport}:${POSTGRES_PASSWORD:-changeme}@db:5432/${POSTGRES_DB:-ppt_report_platform}
+      DASHSCOPE_API_KEY: ${DASHSCOPE_API_KEY:-}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      DASHSCOPE_MODEL: ${DASHSCOPE_MODEL:-}
+    volumes:
+      - uploads:/app/uploads
+
+volumes:
+  pgdata:
+  uploads:
