@@ -259,7 +259,7 @@ def _dashscope_assign_fields(
     field_catalog: list[dict[str, str]],
 ) -> dict[str, Any]:
     api_key = os.getenv("DASHSCOPE_API_KEY") or os.getenv("OPENAI_API_KEY")
-    model = os.getenv("DASHSCOPE_MODEL", "qwen3-max")
+    model = (os.getenv("DASHSCOPE_MODEL") or "qwen3-max").strip()
     if not api_key:
         raise RuntimeError("未检测到环境变量 DASHSCOPE_API_KEY（或 OPENAI_API_KEY）。")
 

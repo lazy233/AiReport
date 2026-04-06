@@ -37,7 +37,8 @@ services:
       DATABASE_URL: postgresql+psycopg2://${POSTGRES_USER:-pptreport}:${POSTGRES_PASSWORD:-changeme}@db:5432/${POSTGRES_DB:-ppt_report_platform}
       DASHSCOPE_API_KEY: ${DASHSCOPE_API_KEY:-}
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
-      DASHSCOPE_MODEL: ${DASHSCOPE_MODEL:-}
+      # 勿用 ${VAR:-} 留空：容器内会变成空字符串，os.getenv 默认值不生效，导致 API 报缺少 model
+      DASHSCOPE_MODEL: ${DASHSCOPE_MODEL:-qwen3-max}
     volumes:
       - uploads:/app/uploads
 

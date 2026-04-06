@@ -34,7 +34,7 @@ def generate_student_guidance(
     依赖 DASHSCOPE_API_KEY（或 OPENAI_API_KEY）与 DASHSCOPE_MODEL。
     """
     api_key = os.getenv("DASHSCOPE_API_KEY") or os.getenv("OPENAI_API_KEY")
-    model = os.getenv("DASHSCOPE_MODEL", "qwen3-max")
+    model = (os.getenv("DASHSCOPE_MODEL") or "qwen3-max").strip()
     if not api_key:
         raise RuntimeError("未配置大模型：请设置环境变量 DASHSCOPE_API_KEY（或 OPENAI_API_KEY）。")
 
