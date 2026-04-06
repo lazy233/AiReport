@@ -3,7 +3,16 @@ FROM python:3.12-slim
 
 WORKDIR /app
 
-RUN apt-get update \
+# 国内访问 deb.debian.org 常较慢：构建前将 APT 源换为阿里云（海外构建传 USE_CN_APT_MIRROR=0）
+ARG USE_CN_APT_MIRROR=1
+RUN set -eux; \
+    if [ "$USE_CN_APT_MIRROR" = "1" ] && [ -f /etc/apt/sources.list.d/debian.sources ]; then \
+      sed -i 's|http://deb.debian.org/debian|https://mirrors.aliyun.com/debian|g' /etc/apt/sources.list.d/debian.sources; \
+      sed -i 's|https://deb.debian.org/debian|https://mirrors.aliyun.com/debian|g' /etc/apt/sources.list.d/debian.sources; \
+      sed -i 's|http://security.debian.org/debian-security|https://mirrors.aliyun.com/debian-security|g' /etc/apt/sources.list.d/debian.sources; \
+      sed -i 's|https://security.debian.org/debian-security|https://mirrors.aliyun.com/debian-security|g' /etc/apt/sources.list.d/debian.sources; \
+    fi; \
+    apt-get update \
     && apt-get install -y --no-install-recommends \
         libpq5 \
     && rm -rf /var/lib/apt/lists/*

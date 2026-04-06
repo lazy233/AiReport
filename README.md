@@ -70,6 +70,9 @@ docker compose up -d --build
 **构建阶段 pip 超时**：若日志出现 `Read timed out` 连接 `files.pythonhosted.org`，多为访问 PyPI 不稳定。`Dockerfile` 已设置较长超时并默认使用清华 PyPI 镜像；拉取最新代码后重新 `--build` 即可。若在境外需使用官方索引，可先执行  
 `docker-compose build --build-arg PIP_INDEX_URL=https://pypi.org/simple web`，再 `docker-compose up -d`。
 
+**构建阶段 apt 很慢**：`apt-get` 访问 `deb.debian.org` 在国内常偏慢。`Dockerfile` 默认在 `apt-get update` 前把 Debian 源换为 **阿里云**（`USE_CN_APT_MIRROR=1`）。境外构建可关闭：  
+`docker-compose build --build-arg USE_CN_APT_MIRROR=0 web`。
+
 浏览器访问：`http://<服务器IP>:5000`（默认映射宿主机 `5000`，可通过 `.env` 中 `HOST_PORT` 修改）。
 
 ### 3. 表结构从哪里来？
