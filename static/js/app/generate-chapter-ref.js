@@ -276,6 +276,21 @@
     }
   }
 
+  function syncAddFieldsAvailability(form) {
+    if (!form) return;
+    var canAdd = !!form._chapterRefResolved;
+    getChapterPanels(form).forEach(function (panel) {
+      var btn = panel.querySelector("[data-chapter-ref-add-fields]");
+      if (!btn) return;
+      btn.disabled = !canAdd;
+      if (canAdd) {
+        btn.removeAttribute("title");
+      } else {
+        btn.setAttribute("title", "请先完成「解析到 PPT」，再添加字段。");
+      }
+    });
+  }
+
   function measureTagsOneRowHeight(wrap) {
     var ch = wrap.children;
     if (!ch.length) return 0;
@@ -498,6 +513,10 @@
 
   function openChapterRefFieldModal(form, panel) {
     if (!form || !panel) return;
+    if (!form._chapterRefResolved) {
+      window.alert("请先完成「解析到 PPT」，再添加字段。");
+      return;
+    }
     ensureChapterRefFieldModal();
     _fieldPickForm = form;
     _fieldPickPanel = panel;
@@ -724,6 +743,7 @@
       setScreenshotStatus(panel, "", false);
     });
     syncResolveRowVisibility();
+    syncAddFieldsAvailability(form);
     syncGenerateSubmitEnabled();
   }
 
@@ -824,6 +844,7 @@
       window.alert(e.message || String(e));
     } finally {
       setResolveLoading(false);
+      syncAddFieldsAvailability(form);
       syncGenerateSubmitEnabled();
     }
   }
@@ -854,6 +875,10 @@
       form.addEventListener("click", function (ev) {
         var btn = ev.target.closest("[data-chapter-ref-add-fields]");
         if (!btn || !form.contains(btn)) return;
+        if (!form._chapterRefResolved) {
+          window.alert("请先完成「解析到 PPT」，再添加字段。");
+          return;
+        }
         var pan = btn.closest(".chapter-tab-panel");
         if (!pan || !isRefSlotKind(pan.getAttribute("data-panel-kind") || "")) return;
         openChapterRefFieldModal(form, pan);
@@ -908,6 +933,7 @@
       });
     }
     syncResolveRowVisibility();
+    syncAddFieldsAvailability(form);
     syncGenerateSubmitEnabled();
   }
 
