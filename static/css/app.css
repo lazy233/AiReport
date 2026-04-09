@@ -1601,6 +1601,11 @@ pre {
   font-weight: 600;
 }
 
+.chapter-ref-add-fields-btn.is-disabled {
+  opacity: 0.72;
+  cursor: pointer;
+}
+
 /* 章节参考：添加字段弹窗 */
 .ch-ref-field-modal-backdrop {
   position: fixed;

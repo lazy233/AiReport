@@ -282,10 +282,14 @@
     getChapterPanels(form).forEach(function (panel) {
       var btn = panel.querySelector("[data-chapter-ref-add-fields]");
       if (!btn) return;
-      btn.disabled = !canAdd;
       if (canAdd) {
+        btn.disabled = false;
+        btn.classList.remove("is-disabled");
         btn.removeAttribute("title");
       } else {
+        // 保留点击能力，点击时给出明确提示
+        btn.disabled = false;
+        btn.classList.add("is-disabled");
         btn.setAttribute("title", "请先完成「解析到 PPT」，再添加字段。");
       }
     });
@@ -856,6 +860,21 @@
       if (!Array.isArray(p._attachedFields)) p._attachedFields = [];
       if (!Array.isArray(p._screenshots)) p._screenshots = [];
       bindScreenshotPanel(form, p);
+      var addBtn = p.querySelector("[data-chapter-ref-add-fields]");
+      if (addBtn && !addBtn._chRefDirectBound) {
+        addBtn._chRefDirectBound = true;
+        addBtn.addEventListener("click", function (ev) {
+          ev.preventDefault();
+          ev.stopPropagation();
+          if (!form._chapterRefResolved) {
+            window.alert("请先完成「解析到 PPT」，再添加字段。");
+            return;
+          }
+          var pan = addBtn.closest(".chapter-tab-panel");
+          if (!pan || !isRefSlotKind(pan.getAttribute("data-panel-kind") || "")) return;
+          openChapterRefFieldModal(form, pan);
+        });
+      }
     });
     if (!form._chRefTitleInputBound) {
       form._chRefTitleInputBound = true;
@@ -869,20 +888,6 @@
     if (btn && !btn.getAttribute("data-ch-ref-bound")) {
       btn.setAttribute("data-ch-ref-bound", "1");
       btn.addEventListener("click", onResolveClick);
-    }
-    if (!form._chRefFieldPickDelegate) {
-      form._chRefFieldPickDelegate = true;
-      form.addEventListener("click", function (ev) {
-        var btn = ev.target.closest("[data-chapter-ref-add-fields]");
-        if (!btn || !form.contains(btn)) return;
-        if (!form._chapterRefResolved) {
-          window.alert("请先完成「解析到 PPT」，再添加字段。");
-          return;
-        }
-        var pan = btn.closest(".chapter-tab-panel");
-        if (!pan || !isRefSlotKind(pan.getAttribute("data-panel-kind") || "")) return;
-        openChapterRefFieldModal(form, pan);
-      });
     }
     if (!form._chRefTagDelegate) {
       form._chRefTagDelegate = true;
