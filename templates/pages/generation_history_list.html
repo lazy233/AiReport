@@ -16,6 +16,24 @@
   </div>
 
   <div class="card" id="gh-list-wrap">
+    <div class="presentation-list-toolbar" style="margin-top: 0; margin-bottom: 10px;">
+      <label class="presentation-list-search-label" for="gh-search-input">搜索</label>
+      <input
+        id="gh-search-input"
+        class="presentation-list-search-input"
+        type="search"
+        placeholder="按主题或模板任务检索历史记录"
+        autocomplete="off"
+      />
+      <button type="button" class="button secondary" id="gh-search-btn">查询</button>
+      <span class="muted" style="font-size: 12px;">手动清理：</span>
+      <select id="gh-cleanup-days" class="select-inline" style="width: auto; min-width: 140px;">
+        <option value="3">保留近 3 天</option>
+        <option value="7">保留近 7 天</option>
+        <option value="15">保留近 15 天</option>
+      </select>
+      <button type="button" class="button secondary" id="gh-cleanup-btn">执行清理</button>
+    </div>
     <div id="gh-list-mount" class="table-scroll"></div>
   </div>
 {% endblock %}

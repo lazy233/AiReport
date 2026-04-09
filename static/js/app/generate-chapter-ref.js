@@ -402,6 +402,12 @@
     _fieldPickBackdrop.setAttribute("hidden", "");
     _fieldPickForm = null;
     _fieldPickPanel = null;
+    var msg = _fieldPickBackdrop.querySelector("#ch-ref-field-custom-msg");
+    if (msg) {
+      msg.hidden = true;
+      msg.textContent = "";
+      msg.classList.remove("is-error");
+    }
   }
 
   function getAvailableFieldsForPanel(form, panel) {
@@ -469,19 +475,28 @@
 
   function openChapterRefFieldModal(form, panel) {
     if (!form || !panel) return;
-    var available = getAvailableFieldsForPanel(form, panel);
-    if (!available.length) {
-      window.alert("暂无可添加字段。若列表为空请先完成「解析到 PPT」；若已全部挂载在本块，请先移除标签再添加。");
-      return;
-    }
     ensureChapterRefFieldModal();
     _fieldPickForm = form;
     _fieldPickPanel = panel;
     var searchInp = _fieldPickBackdrop.querySelector("#ch-ref-field-modal-search");
+    var nameInp = _fieldPickBackdrop.querySelector("#ch-ref-field-custom-name");
+    var valInp = _fieldPickBackdrop.querySelector("#ch-ref-field-custom-value");
+    var msg = _fieldPickBackdrop.querySelector("#ch-ref-field-custom-msg");
     if (searchInp) searchInp.value = "";
+    if (nameInp) nameInp.value = "";
+    if (valInp) valInp.value = "";
+    if (msg) {
+      msg.hidden = true;
+      msg.textContent = "";
+      msg.classList.remove("is-error");
+    }
     renderChapterRefFieldModalList();
     _fieldPickBackdrop.removeAttribute("hidden");
-    if (searchInp) searchInp.focus();
+    if (nameInp) {
+      nameInp.focus();
+    } else if (searchInp) {
+      searchInp.focus();
+    }
   }
 
   function confirmChapterRefFieldModal() {
@@ -516,6 +531,62 @@
     closeChapterRefFieldModal();
   }
 
+  function makeCustomFieldKey(panel, seed) {
+    var base = String(seed || "").trim().toLowerCase().replace(/[^a-z0-9_-]+/g, "_").replace(/^_+|_+$/g, "");
+    if (!base) base = "custom";
+    var key = "custom_" + base;
+    var used = new Set((panel._attachedFields || []).map(function (x) { return x && x.key; }));
+    if (!used.has(key)) return key;
+    var i = 2;
+    while (used.has(key + "_" + i)) i += 1;
+    return key + "_" + i;
+  }
+
+  function setCustomFieldMsg(msg, isError) {
+    if (!_fieldPickBackdrop) return;
+    var el = _fieldPickBackdrop.querySelector("#ch-ref-field-custom-msg");
+    if (!el) return;
+    if (!msg) {
+      el.hidden = true;
+      el.textContent = "";
+      el.classList.remove("is-error");
+      return;
+    }
+    el.hidden = false;
+    el.textContent = msg;
+    el.classList.toggle("is-error", !!isError);
+  }
+
+  function addCustomFieldFromModal() {
+    if (!_fieldPickForm || !_fieldPickPanel || !_fieldPickBackdrop) return;
+    var nameInp = _fieldPickBackdrop.querySelector("#ch-ref-field-custom-name");
+    var valInp = _fieldPickBackdrop.querySelector("#ch-ref-field-custom-value");
+    if (!nameInp || !valInp) return;
+    var label = String(nameInp.value || "").trim();
+    var value = String(valInp.value || "").trim();
+    if (!label) {
+      setCustomFieldMsg("请填写自定义字段名。", true);
+      nameInp.focus();
+      return;
+    }
+    if (!value) {
+      setCustomFieldMsg("请填写自定义字段值。", true);
+      valInp.focus();
+      return;
+    }
+    var panel = _fieldPickPanel;
+    panel._attachedFields = panel._attachedFields || [];
+    panel._attachedFields.push({
+      key: makeCustomFieldKey(panel, label),
+      label: label,
+      value: value,
+    });
+    renderTags(panel);
+    updateHiddenJson(_fieldPickForm);
+    setCustomFieldMsg("", false);
+    closeChapterRefFieldModal();
+  }
+
   function ensureChapterRefFieldModal() {
     if (_fieldPickBackdrop) return;
     _fieldPickBackdrop = document.createElement("div");
@@ -528,6 +599,15 @@
       '<button type="button" class="button secondary ch-ref-field-modal-close" aria-label="关闭">关闭</button>' +
       "</div>" +
       '<div class="ch-ref-field-modal-body">' +
+      '<div class="ch-ref-field-custom-box">' +
+      '<p class="muted ch-ref-field-custom-kicker">自定义字段（仅本次生成有效）</p>' +
+      '<div class="ch-ref-field-custom-row">' +
+      '<input type="text" class="ch-ref-field-custom-input" id="ch-ref-field-custom-name" placeholder="字段名，例如：家庭住址" autocomplete="off" />' +
+      '<input type="text" class="ch-ref-field-custom-input" id="ch-ref-field-custom-value" placeholder="字段值，例如：杭州市西湖区..." autocomplete="off" />' +
+      '<button type="button" class="button secondary ch-ref-field-custom-add" id="ch-ref-field-custom-add">添加自定义字段</button>' +
+      "</div>" +
+      '<p class="muted ch-ref-field-custom-msg" id="ch-ref-field-custom-msg" hidden></p>' +
+      "</div>" +
       '<input type="search" class="ch-ref-field-modal-search" id="ch-ref-field-modal-search" placeholder="搜索字段名或内容…" autocomplete="off" />' +
       '<div class="ch-ref-field-modal-list-wrap">' +
       '<p class="muted ch-ref-field-modal-empty" id="ch-ref-field-modal-empty" hidden>没有匹配的字段</p>' +
@@ -558,6 +638,17 @@
       listRoot.addEventListener("change", function () {
         var cbtn = _fieldPickBackdrop.querySelector("#ch-ref-field-modal-confirm");
         if (cbtn) cbtn.disabled = !listRoot.querySelector(".ch-ref-field-modal-cb:checked");
+      });
+    }
+    var customAdd = _fieldPickBackdrop.querySelector("#ch-ref-field-custom-add");
+    if (customAdd) customAdd.addEventListener("click", addCustomFieldFromModal);
+    var customVal = _fieldPickBackdrop.querySelector("#ch-ref-field-custom-value");
+    if (customVal) {
+      customVal.addEventListener("keydown", function (ev) {
+        if (ev.key === "Enter") {
+          ev.preventDefault();
+          addCustomFieldFromModal();
+        }
       });
     }
     document.addEventListener("keydown", function (ev) {

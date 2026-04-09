@@ -51,6 +51,9 @@ body.app-body {
 .app-sidebar {
   width: 260px;
   flex-shrink: 0;
+  position: sticky;
+  top: 0;
+  height: 100vh;
   background: linear-gradient(165deg, var(--sidebar-bg-top) 0%, var(--sidebar-bg) 42%, #0b2238 100%);
   color: var(--sidebar-text);
   display: flex;
@@ -1653,6 +1656,51 @@ pre {
   min-height: 0;
 }
 
+.ch-ref-field-custom-box {
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: #fafbfd;
+}
+
+.ch-ref-field-custom-kicker {
+  margin: 0 0 8px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.ch-ref-field-custom-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: center;
+}
+
+.ch-ref-field-custom-input {
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--line-strong);
+  font: inherit;
+  font-size: 13px;
+  background: #fff;
+}
+
+.ch-ref-field-custom-add {
+  white-space: nowrap;
+}
+
+.ch-ref-field-custom-msg {
+  margin: 8px 0 0;
+  font-size: 12px;
+}
+
+.ch-ref-field-custom-msg.is-error {
+  color: #b91c1c;
+}
+
 .ch-ref-field-modal-search {
   width: 100%;
   box-sizing: border-box;
@@ -1670,6 +1718,12 @@ pre {
   border: 1px solid var(--line);
   border-radius: 10px;
   background: #fafbfd;
+}
+
+@media (max-width: 760px) {
+  .ch-ref-field-custom-row {
+    grid-template-columns: 1fr;
+  }
 }
 
 .ch-ref-field-modal-empty {
@@ -2948,6 +3002,9 @@ button.buttonlink.danger:hover {
 
   .app-sidebar {
     width: 100%;
+    position: static;
+    top: auto;
+    height: auto;
     flex-direction: column;
     flex-wrap: nowrap;
     align-items: stretch;

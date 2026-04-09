@@ -69,3 +69,16 @@ def delete_filled_export(history_id: str) -> None:
         p.unlink()
     except OSError:
         pass
+
+
+def resolve_filled_export_path(history_id: str) -> Path | None:
+    """返回历史缓存成品路径（仅当文件存在时）。"""
+    p = _path_for_id(history_id)
+    if p is None or not p.is_file():
+        return None
+    try:
+        if p.resolve().parent != config.FILLED_EXPORT_DIR.resolve():
+            return None
+    except OSError:
+        return None
+    return p

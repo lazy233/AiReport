@@ -484,15 +484,23 @@ def persist_generation_history(
         return None
 
 
-def list_generation_history_summaries(limit: int = 200) -> list[dict[str, object]]:
-    """生成历史列表摘要（不含 result JSON），按时间倒序。"""
+def list_generation_history_summaries(query: str = "", limit: int = 200) -> list[dict[str, object]]:
+    """生成历史列表摘要（不含 result JSON），支持关键词检索，按时间倒序。"""
     if not _SessionLocal:
         return []
     lim = max(1, min(int(limit), 2000))
+    q = _norm_str(query)
     with _SessionLocal() as session:
-        rows = session.scalars(
-            select(GenerationHistory).order_by(GenerationHistory.created_at.desc()).limit(lim),
-        ).all()
+        stmt = select(GenerationHistory).order_by(GenerationHistory.created_at.desc()).limit(lim)
+        if q:
+            like = f"%{q}%"
+            stmt = stmt.where(
+                or_(
+                    GenerationHistory.topic.ilike(like),
+                    GenerationHistory.task_id.ilike(like),
+                ),
+            )
+        rows = session.scalars(stmt).all()
     out: list[dict[str, object]] = []
     for r in rows:
         created = r.created_at

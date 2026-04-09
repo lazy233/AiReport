@@ -79,14 +79,14 @@
             if (dlRow) {
               dlRow.addEventListener("click", function (ev) {
                 ev.preventDefault();
-                GenerationHistoryStore.downloadPptx(rec).catch(function (e) {
+                GenerationHistoryStore.downloadHistoryPptxById(recordId).catch(function (e) {
                   alert(e.message || String(e));
                 });
               });
             }
 
             document.getElementById("gh-btn-download").addEventListener("click", function () {
-              GenerationHistoryStore.downloadPptx(rec).catch(function (e) {
+              GenerationHistoryStore.downloadHistoryPptxById(recordId).catch(function (e) {
                 alert(e.message || String(e));
               });
             });

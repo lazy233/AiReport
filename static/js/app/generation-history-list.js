@@ -2,6 +2,8 @@
  * 生成历史列表（服务端）
  */
 (function () {
+  var _currentQuery = "";
+
   function esc(s) {
     var d = document.createElement("div");
     d.textContent = s == null ? "" : String(s);
@@ -31,7 +33,7 @@
     mount.innerHTML = '<p class="muted">加载中…</p>';
 
     try {
-      var pack = await GenerationHistoryStore.fetchList();
+      var pack = await GenerationHistoryStore.fetchList(_currentQuery);
       if (!pack.dbEnabled) {
         mount.innerHTML =
           '<p class="muted">数据库未启用，无法加载服务端历史。请配置 DATABASE_URL 并重启应用。</p>';
@@ -39,7 +41,7 @@
       }
       var items = pack.items || [];
       if (!items.length) {
-        mount.innerHTML = '<p class="muted">暂无生成记录。</p>';
+        mount.innerHTML = '<p class="muted">' + (_currentQuery ? "未找到匹配记录。" : "暂无生成记录。") + "</p>";
         return;
       }
 
@@ -83,12 +85,7 @@
   async function downloadById(id) {
     if (!window.GenerationHistoryStore) return;
     try {
-      var rec = await GenerationHistoryStore.get(id);
-      if (!rec) {
-        alert("记录不存在。");
-        return;
-      }
-      await GenerationHistoryStore.downloadPptx(rec);
+      await GenerationHistoryStore.downloadHistoryPptxById(id);
     } catch (e) {
       alert(e.message || String(e));
     }
@@ -97,6 +94,40 @@
   function init() {
     var wrap = document.getElementById("gh-list-wrap");
     if (!wrap) return;
+    var searchInput = document.getElementById("gh-search-input");
+    var searchBtn = document.getElementById("gh-search-btn");
+    var cleanupSelect = document.getElementById("gh-cleanup-days");
+    var cleanupBtn = document.getElementById("gh-cleanup-btn");
+    function doSearch() {
+      _currentQuery = (searchInput && searchInput.value ? searchInput.value : "").trim();
+      render();
+    }
+    if (searchBtn) {
+      searchBtn.addEventListener("click", doSearch);
+    }
+    if (searchInput) {
+      searchInput.addEventListener("keydown", function (ev) {
+        if (ev.key === "Enter") {
+          ev.preventDefault();
+          doSearch();
+        }
+      });
+    }
+    if (cleanupBtn) {
+      cleanupBtn.addEventListener("click", function () {
+        var days = Number((cleanupSelect && cleanupSelect.value) || 0);
+        if (!(days === 3 || days === 7 || days === 15)) return;
+        if (!confirm("确认清理超过 " + days + " 天的历史记录吗？")) return;
+        GenerationHistoryStore.cleanupByDays(days)
+          .then(function (ret) {
+            alert("清理完成，共删除 " + String(ret.removed || 0) + " 条记录。");
+            return render();
+          })
+          .catch(function (e) {
+            alert(e.message || String(e));
+          });
+      });
+    }
     wrap.addEventListener("click", function (ev) {
       var del = ev.target.closest(".js-gh-del");
       if (del) {

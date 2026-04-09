@@ -41,6 +41,7 @@ from ppt_report.services.presentation_cache import (
 )
 from ppt_report.services.pptx_document import apply_generation_to_presentation
 from ppt_report.services.student_guidance_ai import generate_student_guidance
+from ppt_report.services.filled_export_cache import resolve_filled_export_path
 from ppt_report.utils.files import allowed_file
 
 api_bp = Blueprint("api", __name__, url_prefix="/api")
@@ -294,11 +295,12 @@ def api_presentation_for_generate(task_id: str):
 
 @api_bp.get("/generation_history")
 def api_generation_history_list():
+    query = (request.args.get("q") or "").strip()
     return jsonify(
         {
             "ok": True,
             "db_enabled": db_mod.db_enabled(),
-            "items": db_mod.list_generation_history_summaries(),
+            "items": db_mod.list_generation_history_summaries(query=query),
         },
     )
 
@@ -318,6 +320,93 @@ def api_generation_history_delete(record_id: str):
     if not db_mod.delete_generation_history(record_id):
         return jsonify({"ok": False, "error": "记录不存在。"}), 404
     return jsonify({"ok": True})
+
+
+@api_bp.post("/generation_history/cleanup")
+def api_generation_history_cleanup():
+    if not db_mod.db_enabled():
+        return jsonify({"ok": False, "error": "数据库未启用。"}), 503
+    data = request.get_json(silent=True) or {}
+    try:
+        days = int(data.get("days") or 0)
+    except (TypeError, ValueError):
+        days = 0
+    if days not in (3, 7, 15):
+        return jsonify({"ok": False, "error": "仅支持按 3/7/15 天清理。"}), 400
+    removed = db_mod.cleanup_expired_generation_history(retention_days=days)
+    return jsonify({"ok": True, "removed": int(removed), "days": days})
+
+
+@api_bp.get("/generation_history/<record_id>/download")
+def api_generation_history_download(record_id: str):
+    """
+    历史下载：
+    1) 优先返回 uploads/filled_exports/{record_id}.pptx
+    2) 若缓存不存在，回退到「按 task_id + result 即时导出」
+    3) 若两者均不可用，给出明确提示
+    """
+    rec = db_mod.get_generation_history(record_id)
+    if not rec:
+        return jsonify({"ok": False, "error": "记录不存在，可能已被删除。"}), 404
+
+    cached = resolve_filled_export_path(record_id)
+    if cached:
+        return send_file(
+            cached,
+            as_attachment=True,
+            download_name=f"history_{record_id}_filled.pptx",
+            mimetype="application/vnd.openxmlformats-officedocument.presentationml.presentation",
+        )
+
+    task_id = str(rec.get("taskId") or "").strip()
+    generated = rec.get("result")
+    if not task_id or not isinstance(generated, dict):
+        return (
+            jsonify(
+                {
+                    "ok": False,
+                    "error": "历史缓存文件不存在，且记录缺少导出所需数据，无法下载。请重新生成。",
+                },
+            ),
+            410,
+        )
+
+    template_path = resolve_template_path(task_id)
+    if not template_path or not template_path.is_file():
+        return (
+            jsonify(
+                {
+                    "ok": False,
+                    "error": "历史缓存文件不存在，且原始 PPT 模板已缺失（可能被清理或未持久化），无法下载。请重新上传并生成。",
+                },
+            ),
+            410,
+        )
+
+    prs = Presentation(str(template_path))
+    parsed_export = get_parsed_from_cache(task_id)
+    cr = state.LAST_CHAPTER_REF.get(task_id)
+    if not isinstance(cr, dict):
+        cr = None
+    apply_generation_to_presentation(
+        prs,
+        generated,
+        parsed=parsed_export,
+        chapter_ref=cr,
+        task_id=task_id,
+    )
+    buf = io.BytesIO()
+    prs.save(buf)
+    buf.seek(0)
+    meta = parsed_export or {}
+    raw_name = meta.get("file_name") or "presentation.pptx"
+    stem = Path(raw_name).stem
+    return send_file(
+        buf,
+        as_attachment=True,
+        download_name=f"{stem}_filled.pptx",
+        mimetype="application/vnd.openxmlformats-officedocument.presentationml.presentation",
+    )
 
 
 @api_bp.post("/parse_start")
