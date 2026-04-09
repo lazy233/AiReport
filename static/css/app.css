@@ -1656,6 +1656,36 @@ pre {
   min-height: 0;
 }
 
+.ch-ref-field-modal-tabs {
+  display: flex;
+  gap: 8px;
+  border-bottom: 1px solid var(--line);
+  padding-bottom: 8px;
+}
+
+.ch-ref-field-modal-tab {
+  appearance: none;
+  border: 1px solid var(--line-strong);
+  background: #fff;
+  color: var(--text);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  border-radius: 999px;
+  padding: 6px 12px;
+  cursor: pointer;
+}
+
+.ch-ref-field-modal-tab.is-active {
+  background: var(--primary-soft);
+  border-color: #bfdbfe;
+  color: var(--primary-dark);
+}
+
+.ch-ref-field-modal-tab-panel[hidden] {
+  display: none !important;
+}
+
 .ch-ref-field-custom-box {
   padding: 10px;
   border: 1px solid var(--line);

@@ -14,6 +14,8 @@
   var _fieldPickForm = null;
   /** @type {HTMLElement | null} */
   var _fieldPickPanel = null;
+  /** @type {"preset" | "custom"} */
+  var _fieldPickTab = "preset";
 
   function esc(s) {
     var d = document.createElement("div");
@@ -473,6 +475,27 @@
     }
   }
 
+  function renderChapterRefFieldModalTab() {
+    if (!_fieldPickBackdrop) return;
+    var preset = _fieldPickBackdrop.querySelector("[data-ch-ref-tab-panel='preset']");
+    var custom = _fieldPickBackdrop.querySelector("[data-ch-ref-tab-panel='custom']");
+    var btnPreset = _fieldPickBackdrop.querySelector("[data-ch-ref-tab='preset']");
+    var btnCustom = _fieldPickBackdrop.querySelector("[data-ch-ref-tab='custom']");
+    var isPreset = _fieldPickTab === "preset";
+    if (preset) preset.hidden = !isPreset;
+    if (custom) custom.hidden = isPreset;
+    if (btnPreset) {
+      btnPreset.classList.toggle("is-active", isPreset);
+      btnPreset.setAttribute("aria-selected", isPreset ? "true" : "false");
+      btnPreset.setAttribute("tabindex", isPreset ? "0" : "-1");
+    }
+    if (btnCustom) {
+      btnCustom.classList.toggle("is-active", !isPreset);
+      btnCustom.setAttribute("aria-selected", !isPreset ? "true" : "false");
+      btnCustom.setAttribute("tabindex", !isPreset ? "0" : "-1");
+    }
+  }
+
   function openChapterRefFieldModal(form, panel) {
     if (!form || !panel) return;
     ensureChapterRefFieldModal();
@@ -490,11 +513,11 @@
       msg.textContent = "";
       msg.classList.remove("is-error");
     }
+    _fieldPickTab = "preset";
     renderChapterRefFieldModalList();
+    renderChapterRefFieldModalTab();
     _fieldPickBackdrop.removeAttribute("hidden");
-    if (nameInp) {
-      nameInp.focus();
-    } else if (searchInp) {
+    if (searchInp) {
       searchInp.focus();
     }
   }
@@ -599,6 +622,18 @@
       '<button type="button" class="button secondary ch-ref-field-modal-close" aria-label="关闭">关闭</button>' +
       "</div>" +
       '<div class="ch-ref-field-modal-body">' +
+      '<div class="ch-ref-field-modal-tabs" role="tablist" aria-label="字段类型">' +
+      '<button type="button" class="ch-ref-field-modal-tab is-active" data-ch-ref-tab="preset" role="tab" aria-selected="true">固有字段</button>' +
+      '<button type="button" class="ch-ref-field-modal-tab" data-ch-ref-tab="custom" role="tab" aria-selected="false">自定义字段</button>' +
+      "</div>" +
+      '<div class="ch-ref-field-modal-tab-panel" data-ch-ref-tab-panel="preset">' +
+      '<input type="search" class="ch-ref-field-modal-search" id="ch-ref-field-modal-search" placeholder="搜索字段名或内容…" autocomplete="off" />' +
+      '<div class="ch-ref-field-modal-list-wrap">' +
+      '<p class="muted ch-ref-field-modal-empty" id="ch-ref-field-modal-empty" hidden>没有匹配的字段</p>' +
+      '<ul class="ch-ref-field-modal-list" id="ch-ref-field-modal-list"></ul>' +
+      "</div>" +
+      "</div>" +
+      '<div class="ch-ref-field-modal-tab-panel" data-ch-ref-tab-panel="custom" hidden>' +
       '<div class="ch-ref-field-custom-box">' +
       '<p class="muted ch-ref-field-custom-kicker">自定义字段（仅本次生成有效）</p>' +
       '<div class="ch-ref-field-custom-row">' +
@@ -607,11 +642,6 @@
       '<button type="button" class="button secondary ch-ref-field-custom-add" id="ch-ref-field-custom-add">添加自定义字段</button>' +
       "</div>" +
       '<p class="muted ch-ref-field-custom-msg" id="ch-ref-field-custom-msg" hidden></p>' +
-      "</div>" +
-      '<input type="search" class="ch-ref-field-modal-search" id="ch-ref-field-modal-search" placeholder="搜索字段名或内容…" autocomplete="off" />' +
-      '<div class="ch-ref-field-modal-list-wrap">' +
-      '<p class="muted ch-ref-field-modal-empty" id="ch-ref-field-modal-empty" hidden>没有匹配的字段</p>' +
-      '<ul class="ch-ref-field-modal-list" id="ch-ref-field-modal-list"></ul>' +
       "</div>" +
       '<div class="ch-ref-field-modal-foot">' +
       '<button type="button" class="button secondary ch-ref-field-modal-cancel">取消</button>' +
@@ -633,6 +663,21 @@
         renderChapterRefFieldModalList();
       });
     }
+    _fieldPickBackdrop.addEventListener("click", function (ev) {
+      var tabBtn = ev.target.closest("[data-ch-ref-tab]");
+      if (!tabBtn) return;
+      var next = tabBtn.getAttribute("data-ch-ref-tab");
+      if (next !== "preset" && next !== "custom") return;
+      _fieldPickTab = next;
+      renderChapterRefFieldModalTab();
+      if (next === "preset") {
+        var s = _fieldPickBackdrop.querySelector("#ch-ref-field-modal-search");
+        if (s) s.focus();
+      } else {
+        var n = _fieldPickBackdrop.querySelector("#ch-ref-field-custom-name");
+        if (n) n.focus();
+      }
+    });
     var listRoot = _fieldPickBackdrop.querySelector("#ch-ref-field-modal-list");
     if (listRoot) {
       listRoot.addEventListener("change", function () {
