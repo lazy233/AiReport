@@ -1,16 +1,4 @@
-{# 主导航：资料与模板三项可折叠 #}
-{% set nav_fold_active = request.endpoint in (
-  'web.assistant_upload',
-  'web.presentation_detail',
-  'web.student_data_list',
-  'web.student_data_new',
-  'web.student_data_detail',
-  'web.student_data_edit',
-  'web.chapter_templates_list',
-  'web.chapter_template_new',
-  'web.chapter_template_detail',
-  'web.chapter_template_edit',
-) %}
+{# 主导航：扁平菜单 #}
 <aside class="app-sidebar" aria-label="主导航">
   <div class="app-sidebar-brand">
     <div class="app-sidebar-brand-mark" aria-hidden="true">
@@ -55,66 +43,54 @@
       </span>
       <span class="app-nav-label">报告生成</span>
     </a>
-    <details class="app-nav-fold"{% if nav_fold_active %} open{% endif %}>
-      <summary class="app-nav-fold-summary">
-        <span class="app-nav-icon" aria-hidden="true">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
-          </svg>
-        </span>
-        <span class="app-nav-fold-title">资料与模板</span>
-      </summary>
-      <div class="app-nav-fold-inner">
-        <a
-          class="app-nav-link app-nav-link--sub{% if request.endpoint in ('web.assistant_upload', 'web.presentation_detail') %} is-active{% endif %}"
-          href="{{ url_for('web.assistant_upload') }}"
-        >
-          <span class="app-nav-icon app-nav-icon--sub" aria-hidden="true">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
-              <rect x="2" y="3" width="20" height="14" rx="2" />
-              <path d="M8 21h8M12 17v4" />
-            </svg>
-          </span>
-          <span class="app-nav-label">PPT模板管理</span>
-        </a>
-        <a
-          class="app-nav-link app-nav-link--sub{% if request.endpoint in (
-            'web.student_data_list',
-            'web.student_data_new',
-            'web.student_data_detail',
-            'web.student_data_edit',
-          ) %} is-active{% endif %}"
-          href="{{ url_for('web.student_data_list') }}"
-        >
-          <span class="app-nav-icon app-nav-icon--sub" aria-hidden="true">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
-              <circle cx="9" cy="7" r="4" />
-              <path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" />
-            </svg>
-          </span>
-          <span class="app-nav-label">学生数据管理</span>
-        </a>
-        <a
-          class="app-nav-link app-nav-link--sub{% if request.endpoint in (
-            'web.chapter_templates_list',
-            'web.chapter_template_new',
-            'web.chapter_template_detail',
-            'web.chapter_template_edit',
-          ) %} is-active{% endif %}"
-          href="{{ url_for('web.chapter_templates_list') }}"
-        >
-          <span class="app-nav-icon app-nav-icon--sub" aria-hidden="true">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
-              <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
-              <path d="M8 7h8M8 11h8M8 15h4" />
-            </svg>
-          </span>
-          <span class="app-nav-label">章节模板管理</span>
-        </a>
-      </div>
-    </details>
+    <a
+      class="app-nav-link{% if request.endpoint in ('web.assistant_upload', 'web.presentation_detail') %} is-active{% endif %}"
+      href="{{ url_for('web.assistant_upload') }}"
+    >
+      <span class="app-nav-icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="2" y="3" width="20" height="14" rx="2" />
+          <path d="M8 21h8M12 17v4" />
+        </svg>
+      </span>
+      <span class="app-nav-label">PPT模板管理</span>
+    </a>
+    <a
+      class="app-nav-link{% if request.endpoint in (
+        'web.student_data_list',
+        'web.student_data_new',
+        'web.student_data_detail',
+        'web.student_data_edit',
+      ) %} is-active{% endif %}"
+      href="{{ url_for('web.student_data_list') }}"
+    >
+      <span class="app-nav-icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+          <circle cx="9" cy="7" r="4" />
+          <path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" />
+        </svg>
+      </span>
+      <span class="app-nav-label">学生数据管理</span>
+    </a>
+    <a
+      class="app-nav-link{% if request.endpoint in (
+        'web.chapter_templates_list',
+        'web.chapter_template_new',
+        'web.chapter_template_detail',
+        'web.chapter_template_edit',
+      ) %} is-active{% endif %}"
+      href="{{ url_for('web.chapter_templates_list') }}"
+    >
+      <span class="app-nav-icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
+          <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
+          <path d="M8 7h8M8 11h8M8 15h4" />
+        </svg>
+      </span>
+      <span class="app-nav-label">章节模板管理</span>
+    </a>
     <a
       class="app-nav-link{% if request.endpoint in ('web.generation_history_list', 'web.generation_history_detail') %} is-active{% endif %}"
       href="{{ url_for('web.generation_history_list') }}"

@@ -35,11 +35,21 @@
     }
   }
 
-  function clearGenerateRefAnchor() {
-    var anchor = document.getElementById("generate-ref-anchor");
-    if (!anchor) return;
-    anchor.innerHTML = "";
-    anchor.hidden = true;
+  function setGenerateRefTabPlaceholders(show) {
+    var ch = document.getElementById("gen-ref-chapter-placeholder");
+    var st = document.getElementById("gen-ref-student-placeholder");
+    if (ch) ch.hidden = !show;
+    if (st) st.hidden = !show;
+  }
+
+  function clearGenerateRefMounts() {
+    ["gen-ref-mount-chapter", "gen-ref-mount-student", "gen-ref-footer-mount"].forEach(function (id) {
+      var el = document.getElementById(id);
+      if (el) {
+        while (el.firstChild) el.removeChild(el.firstChild);
+      }
+    });
+    setGenerateRefTabPlaceholders(true);
   }
 
   function clearGenerateTopicFoldAnchor() {
@@ -55,15 +65,23 @@
     anchor.appendChild(fold);
   }
 
-  function mountRefToolbarToAnchor(formRoot) {
-    var anchor = document.getElementById("generate-ref-anchor");
-    if (!anchor || !formRoot) return;
-    var toolbar = formRoot.querySelector("#gen-ref-toolbar");
-    var strip = formRoot.querySelector("#gen-ref-picks");
-    if (!toolbar) return;
-    anchor.appendChild(toolbar);
-    if (strip) anchor.appendChild(strip);
-    anchor.hidden = false;
+  function mountRefPartsToAnchor(formRoot) {
+    var chM = document.getElementById("gen-ref-mount-chapter");
+    var stM = document.getElementById("gen-ref-mount-student");
+    var ftM = document.getElementById("gen-ref-footer-mount");
+    if (!formRoot) return;
+    var scope = formRoot.querySelector("#ai-generate-form") || formRoot;
+    var tch = scope.querySelector("#gen-ref-toolbar-chapter");
+    var tst = scope.querySelector("#gen-ref-toolbar-student");
+    var chipCh = scope.querySelector("#gen-ref-pick-chapter-wrap");
+    var chipSt = scope.querySelector("#gen-ref-pick-student-wrap");
+    var picks = scope.querySelector("#gen-ref-picks");
+    if (chM && tch) chM.appendChild(tch);
+    if (chM && chipCh) chM.appendChild(chipCh);
+    if (stM && tst) stM.appendChild(tst);
+    if (stM && chipSt) stM.appendChild(chipSt);
+    if (ftM && picks) ftM.appendChild(picks);
+    setGenerateRefTabPlaceholders(false);
   }
 
   async function loadGenerateForm(taskId) {
@@ -72,7 +90,7 @@
     var hint = document.getElementById("generate-context-hint");
     var mountResult = document.getElementById("ai-result-mount");
     if (!root) return;
-    clearGenerateRefAnchor();
+    clearGenerateRefMounts();
     clearGenerateTopicFoldAnchor();
     if (errEl) {
       errEl.hidden = true;
@@ -118,7 +136,7 @@
       if (window.PptApp && window.PptApp.initChapterReferenceUi) {
         window.PptApp.initChapterReferenceUi(form);
       }
-      mountRefToolbarToAnchor(root);
+      mountRefPartsToAnchor(root);
       if (
         tid &&
         window.PptApp &&
@@ -128,6 +146,7 @@
       }
     } catch (e) {
       root.innerHTML = '<p class="error">加载失败：' + (e.message || String(e)) + "</p>";
+      setGenerateRefTabPlaceholders(true);
     }
   }
 

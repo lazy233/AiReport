@@ -17,22 +17,40 @@
     </div>
 
     <div class="generate-template-section">
-      <h3 class="generate-section-title">1. 选择 PPT 模板与章节引用</h3>
+      <h3 class="generate-section-title">1. 选择 PPT 与章节引用</h3>
       {% if not db_enabled %}
         <p class="error">未连接 PostgreSQL（请检查 DATABASE_URL 与数据库服务），无法列出已解析模板。</p>
       {% endif %}
-      <div class="generate-task-picker-row generate-task-picker-row--stack">
-        <div class="generate-task-picker-field generate-task-picker-field--primary">
-          <label for="generate-task-select">已解析的 PPT</label>
-          <select id="generate-task-select" class="select-inline generate-task-select">
-            <option value="">— 请选择 —</option>
-          </select>
-          <p class="error generate-task-picker-context" id="generate-context-error" hidden></p>
-          <p class="muted generate-task-picker-context" id="generate-context-hint" hidden></p>
-          <div id="generate-topic-fold-anchor" class="generate-topic-fold-anchor" aria-live="polite"></div>
+      <div id="generate-ref-anchor" class="generate-ref-anchor generate-ref-compact-card" aria-live="polite">
+        <div class="generate-ref-card-inner">
+          <div class="generate-ref-split">
+            <div class="generate-ref-block generate-ref-block--pick">
+              <span class="generate-ref-block-label" id="gen-ref-label-chapter">报告类型</span>
+              <p class="muted gen-ref-inline-placeholder" id="gen-ref-chapter-placeholder">
+                请先在下方选择已解析的成品报告，加载后即可点按钮选择报告类型。
+              </p>
+              <div id="gen-ref-mount-chapter" class="gen-ref-mount gen-ref-mount--inline"></div>
+            </div>
+            <div class="generate-ref-block generate-ref-block--pick">
+              <span class="generate-ref-block-label" id="gen-ref-label-student">学生数据</span>
+              <p class="muted gen-ref-inline-placeholder" id="gen-ref-student-placeholder">
+                请先在下方选择已解析的成品报告，加载后即可点按钮选择学生数据。
+              </p>
+              <div id="gen-ref-mount-student" class="gen-ref-mount gen-ref-mount--inline"></div>
+            </div>
+          </div>
+          <div class="generate-ref-block generate-ref-block--ppt">
+            <label class="generate-ref-block-label" for="generate-task-select">已解析的成品报告（PPT）</label>
+            <select id="generate-task-select" class="select-inline generate-task-select">
+              <option value="">— 请选择 —</option>
+            </select>
+            <p class="error generate-task-picker-context" id="generate-context-error" hidden></p>
+            <p class="muted generate-task-picker-context" id="generate-context-hint" hidden></p>
+          </div>
         </div>
-        <div id="generate-ref-anchor" class="generate-ref-anchor" hidden aria-live="polite"></div>
+        <div id="gen-ref-footer-mount" class="gen-ref-footer-mount"></div>
       </div>
+      <div id="generate-topic-fold-anchor" class="generate-topic-fold-anchor below-ref-card" aria-live="polite"></div>
     </div>
 
     <div id="generate-panel-root" class="generate-panel-root"></div>

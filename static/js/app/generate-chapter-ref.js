@@ -8,6 +8,13 @@
 
   var _autoResolveDebounce = null;
 
+  /** @type {HTMLElement | null} */
+  var _fieldPickBackdrop = null;
+  /** @type {HTMLFormElement | null} */
+  var _fieldPickForm = null;
+  /** @type {HTMLElement | null} */
+  var _fieldPickPanel = null;
+
   function esc(s) {
     var d = document.createElement("div");
     d.textContent = s == null ? "" : String(s);
@@ -31,7 +38,7 @@
     }
     var tplId = (form.querySelector("#gen-chapter-template-id") || {}).value || "";
     if (!String(tplId).trim()) {
-      msgs.push("请选择章节模板。");
+      msgs.push("请选择报告类型。");
     }
     var sid = (form.querySelector("#gen-student-data-id") || {}).value || "";
     if (!String(sid).trim()) {
@@ -41,9 +48,6 @@
       msgs.push(
         "请等待「解析到 PPT」完成（字段分配成功后再生成）；若失败可点「重新解析」重试。",
       );
-    }
-    if (!form.querySelector(".group-select:checked")) {
-      msgs.push("请至少勾选一个章节（纳入本次生成）。");
     }
     return msgs;
   }
@@ -243,6 +247,8 @@
       _autoResolveDebounce = null;
       var form = getForm();
       if (!form) return;
+      var taskId = getTaskId(form);
+      if (!taskId) return;
       var tid = (form.querySelector("#gen-chapter-template-id") || {}).value || "";
       var sid = (form.querySelector("#gen-student-data-id") || {}).value || "";
       if (!tid || !sid) return;
@@ -256,10 +262,11 @@
     var form = getForm();
     var row = document.getElementById("gen-resolve-actions");
     if (!form || !row) return;
+    var taskId = getTaskId(form);
     var tid = (form.querySelector("#gen-chapter-template-id") || {}).value || "";
     var sid = (form.querySelector("#gen-student-data-id") || {}).value || "";
-    row.hidden = !(tid && sid);
-    if (tid && sid) {
+    row.hidden = !(taskId && tid && sid);
+    if (taskId && tid && sid) {
       scheduleAutoResolve();
     } else if (_autoResolveDebounce) {
       clearTimeout(_autoResolveDebounce);
@@ -348,30 +355,6 @@
     syncTagsCollapsedState(panel);
   }
 
-  function fillFieldSelect(panel, form) {
-    var sel = panel.querySelector("[data-chapter-ref-select]");
-    if (!sel) return;
-    var all = form.__studentFieldsAll || [];
-    var attached = panel._attachedFields || [];
-    var used = new Set(attached.map(function (x) {
-      return x.key;
-    }));
-    sel.innerHTML = '<option value="">选择学生字段并添加…</option>';
-    all.forEach(function (f) {
-      if (used.has(f.key)) return;
-      var opt = document.createElement("option");
-      opt.value = f.key;
-      opt.textContent = f.label + " · " + (f.value.length > 36 ? f.value.slice(0, 36) + "…" : f.value);
-      sel.appendChild(opt);
-    });
-  }
-
-  function refreshAllSelects(form) {
-    getChapterPanels(form).forEach(function (p) {
-      fillFieldSelect(p, form);
-    });
-  }
-
   function updateHiddenJson(form) {
     var el = document.getElementById("gen-chapter-ref-json");
     if (!el) return;
@@ -403,6 +386,186 @@
     el.value = JSON.stringify(payload);
   }
 
+  /** 首页「模板章节名」默认填章节模板名称（解析前后均可再改） */
+  function applyDefaultCoverTitleFromTemplateName(form, templateName) {
+    var name = String(templateName || "").trim();
+    if (!form || !name) return;
+    var cov = form.querySelector('.chapter-tab-panel[data-panel-kind="cover"]');
+    if (!cov) return;
+    var inp = cov.querySelector("[data-chapter-ref-template-title]");
+    if (inp) inp.value = name;
+    updateHiddenJson(form);
+  }
+
+  function closeChapterRefFieldModal() {
+    if (!_fieldPickBackdrop) return;
+    _fieldPickBackdrop.setAttribute("hidden", "");
+    _fieldPickForm = null;
+    _fieldPickPanel = null;
+  }
+
+  function getAvailableFieldsForPanel(form, panel) {
+    var all = form.__studentFieldsAll || [];
+    var used = new Set((panel._attachedFields || []).map(function (x) {
+      return x.key;
+    }));
+    return all.filter(function (f) {
+      return f && f.key && !used.has(f.key);
+    });
+  }
+
+  function renderChapterRefFieldModalList() {
+    if (!_fieldPickBackdrop || !_fieldPickForm || !_fieldPickPanel) return;
+    var listEl = _fieldPickBackdrop.querySelector("#ch-ref-field-modal-list");
+    var emptyEl = _fieldPickBackdrop.querySelector("#ch-ref-field-modal-empty");
+    var confirmBtn = _fieldPickBackdrop.querySelector("#ch-ref-field-modal-confirm");
+    var searchInp = _fieldPickBackdrop.querySelector("#ch-ref-field-modal-search");
+    var q = (searchInp && searchInp.value.trim().toLowerCase()) || "";
+    if (!listEl || !emptyEl) return;
+    var available = getAvailableFieldsForPanel(_fieldPickForm, _fieldPickPanel);
+    listEl.innerHTML = "";
+    var shown = 0;
+    available.forEach(function (f) {
+      var blob = (f.label || "") + " " + (f.key || "") + " " + (f.value || "");
+      if (q && blob.toLowerCase().indexOf(q) === -1) return;
+      shown += 1;
+      var li = document.createElement("li");
+      li.className = "ch-ref-field-modal-item";
+      var id = "ch-ref-modal-f-" + shown + "-" + String(f.key).replace(/[^a-zA-Z0-9_-]/g, "_");
+      var label = document.createElement("label");
+      label.className = "ch-ref-field-modal-label";
+      label.setAttribute("for", id);
+      var cb = document.createElement("input");
+      cb.type = "checkbox";
+      cb.id = id;
+      cb.value = f.key;
+      cb.className = "ch-ref-field-modal-cb";
+      var main = document.createElement("span");
+      main.className = "ch-ref-field-modal-main";
+      var strong = document.createElement("strong");
+      strong.textContent = f.label || f.key;
+      var keySpan = document.createElement("span");
+      keySpan.className = "muted ch-ref-field-modal-key";
+      keySpan.textContent = f.key;
+      main.appendChild(strong);
+      main.appendChild(keySpan);
+      var sub = document.createElement("span");
+      sub.className = "muted ch-ref-field-modal-value";
+      sub.textContent = f.value.length > 80 ? f.value.slice(0, 77) + "…" : f.value;
+      var col = document.createElement("div");
+      col.className = "ch-ref-field-modal-textcol";
+      col.appendChild(main);
+      col.appendChild(sub);
+      label.appendChild(cb);
+      label.appendChild(col);
+      li.appendChild(label);
+      listEl.appendChild(li);
+    });
+    emptyEl.hidden = shown > 0;
+    if (confirmBtn) {
+      confirmBtn.disabled = !listEl.querySelector(".ch-ref-field-modal-cb:checked");
+    }
+  }
+
+  function openChapterRefFieldModal(form, panel) {
+    if (!form || !panel) return;
+    var available = getAvailableFieldsForPanel(form, panel);
+    if (!available.length) {
+      window.alert("暂无可添加字段。若列表为空请先完成「解析到 PPT」；若已全部挂载在本块，请先移除标签再添加。");
+      return;
+    }
+    ensureChapterRefFieldModal();
+    _fieldPickForm = form;
+    _fieldPickPanel = panel;
+    var searchInp = _fieldPickBackdrop.querySelector("#ch-ref-field-modal-search");
+    if (searchInp) searchInp.value = "";
+    renderChapterRefFieldModalList();
+    _fieldPickBackdrop.removeAttribute("hidden");
+    if (searchInp) searchInp.focus();
+  }
+
+  function confirmChapterRefFieldModal() {
+    if (!_fieldPickForm || !_fieldPickPanel || !_fieldPickBackdrop) return;
+    var listEl = _fieldPickBackdrop.querySelector("#ch-ref-field-modal-list");
+    if (!listEl) return;
+    var all = _fieldPickForm.__studentFieldsAll || [];
+    var keys = Array.prototype.map.call(listEl.querySelectorAll(".ch-ref-field-modal-cb:checked"), function (c) {
+      return c.value;
+    });
+    if (!keys.length) return;
+    var panel = _fieldPickPanel;
+    panel._attachedFields = panel._attachedFields || [];
+    var existing = new Set(panel._attachedFields.map(function (x) {
+      return x.key;
+    }));
+    keys.forEach(function (key) {
+      if (existing.has(key)) return;
+      var found = all.find(function (x) {
+        return x.key === key;
+      });
+      if (!found) return;
+      panel._attachedFields.push({
+        key: found.key,
+        label: found.label,
+        value: found.value,
+      });
+      existing.add(key);
+    });
+    renderTags(panel);
+    updateHiddenJson(_fieldPickForm);
+    closeChapterRefFieldModal();
+  }
+
+  function ensureChapterRefFieldModal() {
+    if (_fieldPickBackdrop) return;
+    _fieldPickBackdrop = document.createElement("div");
+    _fieldPickBackdrop.className = "ch-ref-field-modal-backdrop";
+    _fieldPickBackdrop.setAttribute("hidden", "");
+    _fieldPickBackdrop.innerHTML =
+      '<div class="ch-ref-field-modal" role="dialog" aria-modal="true" aria-labelledby="ch-ref-field-modal-title">' +
+      '<div class="ch-ref-field-modal-head">' +
+      '<h3 id="ch-ref-field-modal-title" class="ch-ref-field-modal-title">添加学生字段</h3>' +
+      '<button type="button" class="button secondary ch-ref-field-modal-close" aria-label="关闭">关闭</button>' +
+      "</div>" +
+      '<div class="ch-ref-field-modal-body">' +
+      '<input type="search" class="ch-ref-field-modal-search" id="ch-ref-field-modal-search" placeholder="搜索字段名或内容…" autocomplete="off" />' +
+      '<div class="ch-ref-field-modal-list-wrap">' +
+      '<p class="muted ch-ref-field-modal-empty" id="ch-ref-field-modal-empty" hidden>没有匹配的字段</p>' +
+      '<ul class="ch-ref-field-modal-list" id="ch-ref-field-modal-list"></ul>' +
+      "</div>" +
+      '<div class="ch-ref-field-modal-foot">' +
+      '<button type="button" class="button secondary ch-ref-field-modal-cancel">取消</button>' +
+      '<button type="button" class="button ch-ref-field-modal-confirm" id="ch-ref-field-modal-confirm" disabled>添加所选</button>' +
+      "</div>" +
+      "</div>" +
+      "</div>";
+    document.body.appendChild(_fieldPickBackdrop);
+
+    _fieldPickBackdrop.addEventListener("click", function (ev) {
+      if (ev.target === _fieldPickBackdrop) closeChapterRefFieldModal();
+    });
+    _fieldPickBackdrop.querySelector(".ch-ref-field-modal-close").addEventListener("click", closeChapterRefFieldModal);
+    _fieldPickBackdrop.querySelector(".ch-ref-field-modal-cancel").addEventListener("click", closeChapterRefFieldModal);
+    _fieldPickBackdrop.querySelector(".ch-ref-field-modal-confirm").addEventListener("click", confirmChapterRefFieldModal);
+    var search = _fieldPickBackdrop.querySelector("#ch-ref-field-modal-search");
+    if (search) {
+      search.addEventListener("input", function () {
+        renderChapterRefFieldModalList();
+      });
+    }
+    var listRoot = _fieldPickBackdrop.querySelector("#ch-ref-field-modal-list");
+    if (listRoot) {
+      listRoot.addEventListener("change", function () {
+        var cbtn = _fieldPickBackdrop.querySelector("#ch-ref-field-modal-confirm");
+        if (cbtn) cbtn.disabled = !listRoot.querySelector(".ch-ref-field-modal-cb:checked");
+      });
+    }
+    document.addEventListener("keydown", function (ev) {
+      if (ev.key !== "Escape" || !_fieldPickBackdrop || _fieldPickBackdrop.hidden) return;
+      closeChapterRefFieldModal();
+    });
+  }
+
   function resetChapterReferenceUi(form) {
     if (!form) return;
     form._chapterRefResolved = false;
@@ -420,8 +583,6 @@
       if (row) row.hidden = !isRefSlotKind(kindReset);
       panel._tagsExpanded = false;
       renderTags(panel);
-      var sel = panel.querySelector("[data-chapter-ref-select]");
-      if (sel) sel.innerHTML = '<option value="">选择学生字段并添加…</option>';
       panel._screenshots = [];
       renderScreenshotList(panel);
       setScreenshotStatus(panel, "", false);
@@ -463,7 +624,7 @@
     var panels = getChapterPanels(form);
     var hasChapter = !!form.querySelector('.chapter-tab-panel[data-panel-kind="chapter"]');
     if (!hasChapter) {
-      window.alert("当前 PPT 未识别到「章」块，无法对齐章节模板。");
+      window.alert("当前 PPT 未识别到「章」块，无法对齐报告类型。");
       return;
     }
     if (btn.getAttribute("aria-busy") === "true") return;
@@ -520,7 +681,6 @@
           renderScreenshotList(panel);
         }
       });
-      refreshAllSelects(form);
       updateHiddenJson(form);
       form._chapterRefResolved = true;
     } catch (e) {
@@ -553,32 +713,16 @@
       btn.setAttribute("data-ch-ref-bound", "1");
       btn.addEventListener("click", onResolveClick);
     }
-    getChapterPanels(form).forEach(function (panel) {
-      if (panel._chRefAddBound) return;
-      panel._chRefAddBound = true;
-      var addBtn = panel.querySelector(".chapter-ref-add-btn");
-      var sel = panel.querySelector("[data-chapter-ref-select]");
-      if (!addBtn || !sel) return;
-      addBtn.addEventListener("click", function () {
-        var key = (sel.value || "").trim();
-        if (!key) return;
-        var all = form.__studentFieldsAll || [];
-        var found = all.find(function (x) {
-          return x.key === key;
-        });
-        if (!found) return;
-        panel._attachedFields = panel._attachedFields || [];
-        panel._attachedFields.push({
-          key: found.key,
-          label: found.label,
-          value: found.value,
-        });
-        sel.value = "";
-        renderTags(panel);
-        refreshAllSelects(form);
-        updateHiddenJson(form);
+    if (!form._chRefFieldPickDelegate) {
+      form._chRefFieldPickDelegate = true;
+      form.addEventListener("click", function (ev) {
+        var btn = ev.target.closest("[data-chapter-ref-add-fields]");
+        if (!btn || !form.contains(btn)) return;
+        var pan = btn.closest(".chapter-tab-panel");
+        if (!pan || !isRefSlotKind(pan.getAttribute("data-panel-kind") || "")) return;
+        openChapterRefFieldModal(form, pan);
       });
-    });
+    }
     if (!form._chRefTagDelegate) {
       form._chRefTagDelegate = true;
       form.addEventListener("click", function (ev) {
@@ -624,7 +768,6 @@
         panel._attachedFields = panel._attachedFields || [];
         panel._attachedFields.splice(idx, 1);
         renderTags(panel);
-        refreshAllSelects(form);
         updateHiddenJson(form);
       });
     }
@@ -639,4 +782,5 @@
   window.PptApp.triggerResolveChapterReference = onResolveClick;
   window.PptApp.syncGenerateSubmitEnabled = syncGenerateSubmitEnabled;
   window.PptApp.collectGenerateValidationMessages = collectGenerateValidationMessages;
+  window.PptApp.applyDefaultCoverTitleFromTemplateName = applyDefaultCoverTitleFromTemplateName;
 })();

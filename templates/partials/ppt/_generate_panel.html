@@ -9,7 +9,6 @@
     <details class="gen-topic-fold">
       <summary class="gen-topic-fold-summary">
         <span class="gen-topic-fold-title">额外条件（可选）</span>
-        <span class="muted gen-topic-fold-hint">默认折叠；成品报告已有主题与正文，一般只需替换数据。需要时可在此补充生成约束。</span>
       </summary>
       <div class="gen-topic-fold-body">
         <label class="gen-topic-fold-label" for="gen-topic-input">补充说明或约束</label>
@@ -23,57 +22,51 @@
         <p class="muted gen-topic-fold-foot">可不填。填写后会并入模型提示，与章节参考数据一起在局部替换时生效。</p>
       </div>
     </details>
-    <div class="gen-ref-toolbar" id="gen-ref-toolbar">
-      <div class="gen-ref-toolbar-row">
-        <button type="button" class="button gen-btn-pick gen-btn-pick--template" data-gen-picker="chapter-template">
-          章节模板
-        </button>
-        <button type="button" class="button gen-btn-pick gen-btn-pick--student" data-gen-picker="student-data">
-          学生数据
-        </button>
-      </div>
+    <div class="gen-ref-toolbar gen-ref-toolbar--solo" id="gen-ref-toolbar-chapter">
+      <button type="button" class="button gen-btn-pick gen-btn-pick--template" data-gen-picker="chapter-template">
+        报告类型
+      </button>
     </div>
-    <div class="gen-ref-strip" id="gen-ref-picks" hidden>
-      <div class="gen-ref-strip-head">
-        <span class="gen-ref-strip-title">已选引用</span>
-        <span class="gen-ref-strip-hint muted">可与上方「额外条件」一起，为本次生成提供上下文</span>
+    <div class="gen-ref-toolbar gen-ref-toolbar--solo" id="gen-ref-toolbar-student">
+      <button type="button" class="button gen-btn-pick gen-btn-pick--student" data-gen-picker="student-data">
+        学生数据
+      </button>
+    </div>
+    <div class="gen-ref-chip gen-ref-chip--template" id="gen-ref-pick-chapter-wrap" role="listitem" hidden>
+      <span class="gen-ref-chip-badge">类型</span>
+      <div class="gen-ref-chip-main">
+        <span class="gen-ref-chip-label">报告类型</span>
+        <span class="gen-ref-chip-value" id="gen-ref-pick-chapter-label"></span>
       </div>
-      <div class="gen-ref-chips" role="list">
-        <div class="gen-ref-chip gen-ref-chip--template" id="gen-ref-pick-chapter-wrap" role="listitem" hidden>
-          <span class="gen-ref-chip-badge">模板</span>
-          <div class="gen-ref-chip-main">
-            <span class="gen-ref-chip-label">章节模板</span>
-            <span class="gen-ref-chip-value" id="gen-ref-pick-chapter-label"></span>
-          </div>
-          <button
-            type="button"
-            class="gen-ref-chip-remove"
-            data-gen-clear="chapter-template"
-            aria-label="移除章节模板"
-          >
-            移除
-          </button>
-        </div>
-        <div class="gen-ref-chip gen-ref-chip--student" id="gen-ref-pick-student-wrap" role="listitem" hidden>
-          <span class="gen-ref-chip-badge">学生</span>
-          <div class="gen-ref-chip-main">
-            <span class="gen-ref-chip-label">学生数据</span>
-            <span class="gen-ref-chip-value" id="gen-ref-pick-student-label"></span>
-          </div>
-          <button
-            type="button"
-            class="gen-ref-chip-remove"
-            data-gen-clear="student-data"
-            aria-label="移除学生数据"
-          >
-            移除
-          </button>
-        </div>
+      <button
+        type="button"
+        class="gen-ref-chip-remove"
+        data-gen-clear="chapter-template"
+        aria-label="移除报告类型"
+      >
+        移除
+      </button>
+    </div>
+    <div class="gen-ref-chip gen-ref-chip--student" id="gen-ref-pick-student-wrap" role="listitem" hidden>
+      <span class="gen-ref-chip-badge">学生</span>
+      <div class="gen-ref-chip-main">
+        <span class="gen-ref-chip-label">学生数据</span>
+        <span class="gen-ref-chip-value" id="gen-ref-pick-student-label"></span>
       </div>
+      <button
+        type="button"
+        class="gen-ref-chip-remove"
+        data-gen-clear="student-data"
+        aria-label="移除学生数据"
+      >
+        移除
+      </button>
+    </div>
+    <div class="gen-ref-picks-footer" id="gen-ref-picks" hidden>
       <div class="gen-resolve-actions" id="gen-resolve-actions" hidden>
         <span class="gen-resolve-spinner" id="gen-resolve-spinner" hidden aria-hidden="true"></span>
         <p class="muted gen-resolve-hint" id="gen-resolve-hint">
-          章节模板与学生数据均选择后，将自动请求服务端解析到各「章」块与首页（大模型分配字段，约数十秒）。也可在下方点「重新解析」重试。
+          已解析的 PPT、报告类型与学生数据均就绪后，将自动请求服务端解析到各「章」块与首页（大模型分配字段，约数十秒）。也可点「重新解析」重试。
         </p>
         <button type="button" class="button secondary gen-btn-resolve-retry" id="gen-resolve-to-ppt">
           重新解析
@@ -83,17 +76,9 @@
     {% if chapter_groups %}
       {% if not task_id %}
         <p class="muted generate-demo-banner">
-          以下为示例章节结构（示意页码）。在上方选择已解析的 PPT 后将替换为真实版式并支持生成。
+          以下为示例章节结构（示意页码）。在配置卡片中选择已解析的 PPT 后将替换为真实版式并支持生成。
         </p>
       {% endif %}
-      <div class="gen-chapter-toolbar slide-actions chapter-tabs-toolbar">
-        <button type="button" class="button gen-btn-chapter gen-btn-chapter--all" data-chapter-select="all">
-          全选纳入
-        </button>
-        <button type="button" class="button gen-btn-chapter gen-btn-chapter--none" data-chapter-select="none">
-          全部不选
-        </button>
-      </div>
       <div class="chapter-tabs" data-chapter-tabs>
         <div class="chapter-tabs-bar" role="tablist" aria-label="章节块">
           {% for g in chapter_groups %}
@@ -120,24 +105,22 @@
             aria-labelledby="chapter-tab-{{ loop.index0 }}"
             {% if loop.index0 > 0 %}hidden{% endif %}
           >
-            <div class="chapter-tab-panel-toolbar">
-              <label class="chapter-include-label">
-                <input
-                  type="checkbox"
-                  class="group-select"
-                  data-slides="{{ g.slides | join(',') }}"
-                  data-group-kind="{{ g.kind }}"
-                  {% if g.default_selected %}checked{% endif %}
-                />
-                纳入本次生成
-              </label>
+            <div class="chapter-select-sr-only" aria-hidden="true">
+              <input
+                type="checkbox"
+                class="group-select"
+                data-slides="{{ g.slides | join(',') }}"
+                data-group-kind="{{ g.kind }}"
+                checked
+                tabindex="-1"
+              />
             </div>
             <p class="muted chapter-tab-panel-slides">
               幻灯片页码：<strong>{{ g.slides | join("、") }}</strong>
             </p>
             <div class="chapter-data-slot" data-chapter-data-root>
               <p class="muted chapter-data-nonchapter-note" data-non-chapter-note hidden>
-                本块为目录或其他聚合页，不与「章节模板」中的章节逐条对应；学生字段挂载仅对「首页」与各「章」块开放。
+                本块为目录或其他聚合页，不与「报告类型」中的章节逐条对应；学生字段挂载仅对「首页」与各「章」块开放。
               </p>
               <div class="chapter-ref-body" data-chapter-ref-body>
                 <p class="chapter-data-slot-title">章节参考数据</p>
@@ -149,13 +132,9 @@
                     class="chapter-ref-template-title-input"
                     data-chapter-ref-template-title
                     autocomplete="off"
-                    placeholder="{% if g.kind == 'cover' %}填写报告主标题，生成时写入封面标题{% else %}与章节模板对齐或自定义{% endif %}"
+                    placeholder="{% if g.kind == 'cover' %}默认与所选报告类型同名，可改；生成时写入封面主标题{% else %}与报告类型中的章节名对齐或自定义{% endif %}"
                   />
                 </div>
-                <p class="muted chapter-ref-lead">
-                  「模板章节名」可编辑：首页 Tab 下请填写<strong>报告主标题</strong>（生成时将强制写入封面标题位）；章 Tab 下可与章节模板对齐或自行修改。
-                  学生字段以标签展示；章节模板与学生数据就绪后会自动解析预分配字段，也可在上方点「重新解析」。
-                </p>
                 <div class="chapter-ref-tags-shell" data-chapter-ref-tags-shell>
                   <div class="chapter-ref-tags" data-chapter-ref-tags aria-label="已挂载的学生字段"></div>
                   <button
@@ -168,31 +147,30 @@
                     展开全部标签
                   </button>
                 </div>
-                <div class="chapter-ref-add-row">
-                  <select class="select-inline chapter-ref-field-select" data-chapter-ref-select aria-label="选择要添加的学生字段">
-                    <option value="">选择学生字段并添加…</option>
-                  </select>
-                  <button type="button" class="button gen-btn-chapter gen-btn-chapter--all chapter-ref-add-btn">
-                    添加
+                <div class="chapter-ref-actions-row">
+                  <button
+                    type="button"
+                    class="button secondary chapter-ref-add-fields-btn"
+                    data-chapter-ref-add-fields
+                  >
+                    添加字段…
+                  </button>
+                  <input
+                    type="file"
+                    accept="image/png,image/jpeg,image/jpg,image/gif,image/webp"
+                    class="chapter-ref-screenshot-input"
+                    data-chapter-ref-file-input
+                    multiple
+                    hidden
+                  />
+                  <button type="button" class="button secondary chapter-ref-screenshot-upload-btn" data-chapter-ref-upload-btn>
+                    上传截图
                   </button>
                 </div>
                 <div class="chapter-ref-screenshots">
                   <p class="muted chapter-ref-screenshots-kicker">参考截图</p>
                   <p class="muted chapter-ref-screenshots-lead">可上传多张图片，后续将用于填入对应章节 PPT；支持 PNG / JPEG / GIF / WebP，单张不超过 15MB。</p>
                   <div class="chapter-ref-screenshot-list" data-chapter-ref-screenshot-list aria-label="已上传截图"></div>
-                  <div class="chapter-ref-screenshot-actions">
-                    <input
-                      type="file"
-                      accept="image/png,image/jpeg,image/jpg,image/gif,image/webp"
-                      class="chapter-ref-screenshot-input"
-                      data-chapter-ref-file-input
-                      multiple
-                      hidden
-                    />
-                    <button type="button" class="button secondary chapter-ref-screenshot-upload-btn" data-chapter-ref-upload-btn>
-                      上传截图
-                    </button>
-                  </div>
                   <p class="muted chapter-ref-screenshot-status" data-chapter-ref-screenshot-status hidden></p>
                 </div>
               </div>

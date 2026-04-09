@@ -397,6 +397,8 @@ def resolve_chapter_reference(
     if n_ch <= 0:
         raise ValueError("当前 PPT 未解析出「章」块，无法对齐章节模板。")
 
+    tpl_name = str(tpl.get("name") or "").strip()
+
     titles, meta = template_chapter_titles(tpl)
     n_tpl = len(titles)
     if n_tpl > n_ch:
@@ -420,8 +422,8 @@ def resolve_chapter_reference(
             slots_for_model.append(
                 {
                     "slotIndex": i,
-                    "templateTitle": "",
-                    "templateHint": "封面/首页：请在生成页「模板章节名」填写报告主标题（生成时将强制写入封面 title 文本框）。"
+                    "templateTitle": tpl_name,
+                    "templateHint": "封面/首页：templateTitle 默认为当前章节模板名称，用作报告主标题写入封面；可按需修改。"
                     "结合成品副标题、姓名、日期等位置分配学生基础信息字段。",
                     "pptChapterExcerpt": excerpt,
                 },
@@ -467,7 +469,7 @@ def resolve_chapter_reference(
         slides_str = ",".join(str(int(s)) for s in slide_list if str(s).strip().isdigit())
         kind = str(row.get("kind") or "")
         if kind == "cover":
-            title = ""
+            title = tpl_name
         else:
             title = titles[ch_out] if ch_out < len(titles) else ""
             ch_out += 1

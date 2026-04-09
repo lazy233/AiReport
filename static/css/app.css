@@ -883,32 +883,115 @@ pre {
   align-self: start;
 }
 
-.generate-ref-anchor:not([hidden]) {
+.generate-ref-compact-card {
   min-width: 0;
-  padding: 8px 10px 10px;
   border-radius: 12px;
   border: 1px solid var(--line);
-  background: #fafbfd;
+  background: #fff;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+  overflow: hidden;
 }
 
-.generate-ref-anchor .gen-ref-toolbar {
+.generate-ref-card-inner {
+  padding: 12px 14px 14px;
+}
+
+.generate-ref-block-label {
+  display: block;
+  margin: 0 0 6px;
+  font-weight: 700;
+  font-size: 13px;
+  color: var(--text);
+  letter-spacing: 0.02em;
+}
+
+.generate-ref-block--ppt .generate-task-select {
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+.generate-ref-block--ppt {
+  padding-top: 12px;
+  margin-top: 12px;
+  border-top: 1px dashed var(--line);
+}
+
+.generate-ref-split {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 12px 16px;
+  align-items: start;
+}
+
+@media (max-width: 640px) {
+  .generate-ref-split {
+    grid-template-columns: 1fr;
+  }
+}
+
+.generate-ref-block--pick {
+  min-width: 0;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: #f8fafc;
+  border: 1px solid var(--line);
+}
+
+.gen-ref-inline-placeholder {
+  margin: 0 0 8px;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.gen-ref-inline-placeholder[hidden] {
+  display: none !important;
+}
+
+.gen-ref-mount {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+  min-width: 0;
+}
+
+.gen-ref-mount--inline {
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 10px;
+}
+
+.gen-ref-mount--inline .gen-ref-chip {
+  max-width: 100%;
+}
+
+.gen-ref-footer-mount {
+  padding: 10px 14px 12px;
+  background: #fafbfd;
+  border-top: 1px solid var(--line);
+}
+
+.generate-ref-anchor .gen-ref-toolbar--solo {
   margin-top: 0;
 }
 
-/* 嵌入步骤 1 右侧后收紧已选引用卡片 */
-.generate-ref-anchor .gen-ref-strip {
-  margin-top: 6px;
-  padding: 10px 12px;
-}
-
-.generate-ref-anchor .gen-ref-strip-head {
-  margin-bottom: 6px;
-  gap: 6px 10px;
+.generate-ref-anchor .gen-ref-picks-footer {
+  margin-top: 0;
+  padding: 0;
+  border: none;
+  background: transparent;
 }
 
 .generate-ref-anchor .gen-resolve-actions {
-  margin-top: 8px;
-  padding-top: 8px;
+  margin-top: 0;
+  padding-top: 10px;
+  border-top: none;
+}
+
+.generate-topic-fold-anchor.below-ref-card {
+  margin-top: 14px;
 }
 
 .generate-empty-state {
@@ -1292,7 +1375,7 @@ pre {
   word-break: break-word;
 }
 
-#gen-ref-picks .gen-ref-chip-remove {
+.gen-ref-mount .gen-ref-chip-remove {
   flex-shrink: 0;
   margin-left: 4px;
   padding: 6px 10px;
@@ -1307,7 +1390,7 @@ pre {
   transform: none;
 }
 
-#gen-ref-picks .gen-ref-chip-remove:hover {
+.gen-ref-mount .gen-ref-chip-remove:hover {
   color: #b91c1c;
   background: #fef2f2;
   border-color: #fecaca;
@@ -1503,17 +1586,170 @@ pre {
   color: #b91c1c;
 }
 
-.chapter-ref-add-row {
+.chapter-ref-actions-row {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: 8px;
+  margin-top: 8px;
 }
 
-#ai-generate-form .chapter-ref-field-select {
-  flex: 1 1 200px;
-  min-width: 160px;
-  max-width: 100%;
+.chapter-ref-add-fields-btn {
+  font-weight: 600;
+}
+
+/* 章节参考：添加字段弹窗 */
+.ch-ref-field-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 12000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  background: rgba(15, 23, 42, 0.45);
+  box-sizing: border-box;
+}
+
+.ch-ref-field-modal-backdrop[hidden] {
+  display: none !important;
+}
+
+.ch-ref-field-modal {
+  width: 100%;
+  max-width: 440px;
+  max-height: min(86vh, 560px);
+  display: flex;
+  flex-direction: column;
+  border-radius: 14px;
+  background: #fff;
+  border: 1px solid var(--line-strong);
+  box-shadow: 0 20px 50px rgba(15, 23, 42, 0.18);
+  overflow: hidden;
+}
+
+.ch-ref-field-modal-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--line);
+  background: #f8fafc;
+}
+
+.ch-ref-field-modal-title {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 800;
+  color: var(--text);
+}
+
+.ch-ref-field-modal-body {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px 14px;
+  min-height: 0;
+}
+
+.ch-ref-field-modal-search {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--line-strong);
+  font: inherit;
+  font-size: 14px;
+}
+
+.ch-ref-field-modal-list-wrap {
+  min-height: 120px;
+  max-height: 280px;
+  overflow: auto;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: #fafbfd;
+}
+
+.ch-ref-field-modal-empty {
+  margin: 0;
+  padding: 16px 12px;
+  text-align: center;
+  font-size: 13px;
+}
+
+.ch-ref-field-modal-list {
+  margin: 0;
+  padding: 6px;
+  list-style: none;
+}
+
+.ch-ref-field-modal-item {
+  margin: 0 0 4px;
+}
+
+.ch-ref-field-modal-item:last-child {
+  margin-bottom: 0;
+}
+
+.ch-ref-field-modal-label {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.12s ease;
+}
+
+.ch-ref-field-modal-label:hover {
+  background: #fff;
+}
+
+.ch-ref-field-modal-cb {
+  margin-top: 3px;
+  flex-shrink: 0;
+  width: 16px;
+  height: 16px;
+  accent-color: var(--primary, #2563eb);
+}
+
+.ch-ref-field-modal-textcol {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.ch-ref-field-modal-main {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  min-width: 0;
+}
+
+.ch-ref-field-modal-key {
+  font-size: 11px;
+  word-break: break-all;
+}
+
+.ch-ref-field-modal-value {
+  font-size: 12px;
+  line-height: 1.35;
+  word-break: break-word;
+}
+
+.ch-ref-field-modal-foot {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 12px 14px;
+  border-top: 1px solid var(--line);
+  background: #f8fafc;
 }
 
 .chapter-ref-screenshots {
@@ -1592,12 +1828,6 @@ pre {
 
 .chapter-ref-screenshot-remove:hover {
   background: #b91c1c;
-}
-
-.chapter-ref-screenshot-actions {
-  display: flex;
-  align-items: center;
-  gap: 8px;
 }
 
 .chapter-ref-screenshot-status {
@@ -1829,11 +2059,25 @@ pre {
 }
 
 .chapter-tab-panel {
+  position: relative;
   padding: 16px 18px 18px;
   background: #fff;
   border: 1px solid var(--line);
   border-top: none;
   border-radius: 0 0 16px 16px;
+}
+
+/* 隐藏「纳入本次生成」勾选框，仍参与 selected_slides 同步（固定全选） */
+.chapter-select-sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  border: 0;
+  white-space: nowrap;
 }
 
 .chapter-tab-panel-toolbar {

@@ -201,6 +201,12 @@
       return Array.from(genForm.querySelectorAll(".group-select"));
     }
 
+    function ensureAllGroupsSelected() {
+      groupSelectEls().forEach(function (cb) {
+        cb.checked = true;
+      });
+    }
+
     function syncChapterSelectionToForm() {
       if (!hiddenMount) return;
       hiddenMount.innerHTML = "";
@@ -221,47 +227,13 @@
       });
     }
 
-    groupSelectEls().forEach(function (groupCb) {
-      groupCb.addEventListener("change", function () {
-        syncChapterSelectionToForm();
-        syncChapterTabIncludedMarkers(genForm);
-        if (window.PptApp && window.PptApp.syncGenerateSubmitEnabled) {
-          window.PptApp.syncGenerateSubmitEnabled();
-        }
-      });
-    });
-
-    var chAll = genForm.querySelector('[data-chapter-select="all"]');
-    var chNone = genForm.querySelector('[data-chapter-select="none"]');
-    if (chAll) {
-      chAll.addEventListener("click", function () {
-        groupSelectEls().forEach(function (cb) {
-          cb.checked = true;
-        });
-        syncChapterSelectionToForm();
-        syncChapterTabIncludedMarkers(genForm);
-        if (window.PptApp && window.PptApp.syncGenerateSubmitEnabled) {
-          window.PptApp.syncGenerateSubmitEnabled();
-        }
-      });
-    }
-    if (chNone) {
-      chNone.addEventListener("click", function () {
-        groupSelectEls().forEach(function (cb) {
-          cb.checked = false;
-        });
-        syncChapterSelectionToForm();
-        syncChapterTabIncludedMarkers(genForm);
-        if (window.PptApp && window.PptApp.syncGenerateSubmitEnabled) {
-          window.PptApp.syncGenerateSubmitEnabled();
-        }
-      });
-    }
+    ensureAllGroupsSelected();
     syncChapterSelectionToForm();
     initChapterTabs(genForm);
     syncChapterTabIncludedMarkers(genForm);
 
     genForm._resyncChapters = function () {
+      ensureAllGroupsSelected();
       syncChapterSelectionToForm();
       syncChapterTabIncludedMarkers(genForm);
     };
@@ -311,6 +283,7 @@
       if (genSubmit && genSubmit.disabled) {
         return;
       }
+      ensureAllGroupsSelected();
       syncChapterSelectionToForm();
       var preMsgs =
         window.PptApp && window.PptApp.collectGenerateValidationMessages

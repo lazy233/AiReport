@@ -23,42 +23,30 @@
   }
 
   /**
-   * 按章节模板章节数调整勾选：模板章数 > PPT 章数则失败；
-   * 相等则全选各块；小于则仅勾选前 tplCount 个「章」块（不选目录/首页/其他）。
+   * 校验模板章数不大于 PPT「章」块数；通过后始终勾选全部块（生成范围固定为全部分组）。
    * @returns {boolean}
    */
   function applyChapterTemplateAutoSelect(form, tplCount) {
     if (!form) return false;
     var n = parseInt(tplCount, 10);
     if (!Number.isFinite(n) || n <= 0) {
-      window.alert("该章节模板没有有效章节定义。");
+      window.alert("该报告类型没有有效章节定义。");
       return false;
     }
     var pptCh = countPptChapterGroups(form);
     if (n > pptCh) {
       window.alert(
-        "章节模板包含 " +
+        "报告类型包含 " +
           n +
           " 个章节，当前 PPT 仅解析出 " +
           pptCh +
-          " 个「章」块，数量不匹配。请更换模板或更换 PPT。",
+          " 个「章」块，数量不匹配。请更换报告类型或更换 PPT。",
       );
       return false;
     }
-    var all = form.querySelectorAll(".group-select");
-    if (n === pptCh) {
-      all.forEach(function (cb) {
-        cb.checked = true;
-      });
-    } else {
-      all.forEach(function (cb) {
-        cb.checked = false;
-      });
-      var chapterCbs = form.querySelectorAll('.group-select[data-group-kind="chapter"]');
-      for (var i = 0; i < n; i++) {
-        if (chapterCbs[i]) chapterCbs[i].checked = true;
-      }
-    }
+    form.querySelectorAll(".group-select").forEach(function (cb) {
+      cb.checked = true;
+    });
     return true;
   }
 
@@ -91,7 +79,7 @@
       var res = await fetch("/api/chapter-templates/" + encodeURIComponent(id));
       var data = await res.json();
       if (!res.ok || !data.ok) {
-        window.alert(data.error || "加载章节模板详情失败");
+        window.alert(data.error || "加载报告类型详情失败");
         return false;
       }
       var item = data.item || {};
@@ -116,7 +104,7 @@
     var wSt = document.getElementById("gen-ref-pick-student-wrap");
     var lCh = document.getElementById("gen-ref-pick-chapter-label");
     var lSt = document.getElementById("gen-ref-pick-student-label");
-    if (!form || !strip) return;
+    if (!form) return;
     var tid = (form.querySelector("#gen-chapter-template-id") || {}).value || "";
     var sid = (form.querySelector("#gen-student-data-id") || {}).value || "";
     var chName = (form.querySelector("#gen-chapter-template-id") || {}).getAttribute("data-label") || "";
@@ -125,7 +113,7 @@
     if (lSt) lSt.textContent = sid ? stName || sid : "";
     if (wCh) wCh.hidden = !tid;
     if (wSt) wSt.hidden = !sid;
-    strip.hidden = !tid && !sid;
+    if (strip) strip.hidden = !(tid && sid);
     if (window.PptApp && window.PptApp.syncGenResolveRow) {
       window.PptApp.syncGenResolveRow();
     }
@@ -146,6 +134,13 @@
     if (window.PptApp && window.PptApp.resetChapterReferenceUi) {
       window.PptApp.resetChapterReferenceUi(getForm());
     }
+    if (
+      id &&
+      window.PptApp &&
+      typeof window.PptApp.applyDefaultCoverTitleFromTemplateName === "function"
+    ) {
+      window.PptApp.applyDefaultCoverTitleFromTemplateName(getForm(), label || "");
+    }
   }
 
   function setStudentData(id, label) {
@@ -158,7 +153,16 @@
     else el.removeAttribute("data-label");
     syncRefPicksUi();
     if (window.PptApp && window.PptApp.resetChapterReferenceUi) {
-      window.PptApp.resetChapterReferenceUi(getForm());
+      window.PptApp.resetChapterReferenceUi(form);
+    }
+    var tplEl = form.querySelector("#gen-chapter-template-id");
+    var tplLabel = tplEl ? tplEl.getAttribute("data-label") || "" : "";
+    if (
+      tplLabel.trim() &&
+      window.PptApp &&
+      typeof window.PptApp.applyDefaultCoverTitleFromTemplateName === "function"
+    ) {
+      window.PptApp.applyDefaultCoverTitleFromTemplateName(form, tplLabel);
     }
   }
 
@@ -296,7 +300,7 @@
     var search = backdrop.querySelector(".gen-picker-search");
 
     if (titleEl) {
-      titleEl.textContent = mode === "chapter-template" ? "选择章节模板" : "选择学生数据";
+      titleEl.textContent = mode === "chapter-template" ? "选择报告类型" : "选择学生数据";
     }
     if (search) search.value = "";
     if (list) list.innerHTML = "";
@@ -341,7 +345,11 @@
     if (clr) {
       var f = getForm();
       var refPicks = document.getElementById("gen-ref-picks");
-      if (!f || (!f.contains(clr) && (!refPicks || !refPicks.contains(clr)))) return;
+      var wrapCh = document.getElementById("gen-ref-pick-chapter-wrap");
+      var wrapSt = document.getElementById("gen-ref-pick-student-wrap");
+      var inChip =
+        (wrapCh && wrapCh.contains(clr)) || (wrapSt && wrapSt.contains(clr));
+      if (!f || (!f.contains(clr) && (!refPicks || !refPicks.contains(clr)) && !inChip)) return;
       var which = clr.getAttribute("data-gen-clear");
       if (which === "chapter-template") setChapterTemplate("", "");
       else if (which === "student-data") setStudentData("", "");
