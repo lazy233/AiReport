@@ -57,6 +57,8 @@
             esc(shortId(it.taskId)) +
             "</code></td><td>" +
             esc(it.slideCount) +
+            "</td><td>" +
+            esc((it.outputKind || "pptx").toUpperCase()) +
             '</td><td class="col-actions">' +
             '<a href="/history/' +
             encodeURIComponent(it.id) +
@@ -73,7 +75,7 @@
         .join("");
 
       mount.innerHTML =
-        '<table class="presentation-table"><thead><tr><th>时间</th><th>主题</th><th>模板任务</th><th>生成页数</th><th>操作</th></tr></thead><tbody>' +
+        '<table class="presentation-table"><thead><tr><th>时间</th><th>主题</th><th>模板任务</th><th>生成页数</th><th>产物</th><th>操作</th></tr></thead><tbody>' +
         rows +
         "</tbody></table>";
     } catch (e) {
@@ -85,7 +87,7 @@
   async function downloadById(id) {
     if (!window.GenerationHistoryStore) return;
     try {
-      await GenerationHistoryStore.downloadHistoryPptxById(id);
+      await GenerationHistoryStore.downloadHistoryById(id);
     } catch (e) {
       alert(e.message || String(e));
     }

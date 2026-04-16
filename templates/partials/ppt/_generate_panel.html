@@ -6,22 +6,10 @@
     <input type="hidden" name="chapter_template_id" id="gen-chapter-template-id" value="" />
     <input type="hidden" name="student_data_id" id="gen-student-data-id" value="" />
     <input type="hidden" name="chapter_ref_json" id="gen-chapter-ref-json" value="" />
-    <details class="gen-topic-fold">
-      <summary class="gen-topic-fold-summary">
-        <span class="gen-topic-fold-title">额外条件（可选）</span>
-      </summary>
-      <div class="gen-topic-fold-body">
-        <label class="gen-topic-fold-label" for="gen-topic-input">补充说明或约束</label>
-        <textarea
-          id="gen-topic-input"
-          name="topic"
-          form="ai-generate-form"
-          rows="3"
-          placeholder="例如：人称统一用「该生」；某处日期改为 2026 年春季；避免使用「同学」称呼……"
-        >{{ topic or "" }}</textarea>
-        <p class="muted gen-topic-fold-foot">可不填。填写后会并入模型提示，与章节参考数据一起在局部替换时生效。</p>
-      </div>
-    </details>
+    <p class="muted" data-word-mode-note hidden>
+      已进入 Word 生成模式：将按所选学生数据回填 Word 表格，不执行章节解析。
+    </p>
+    <input type="hidden" name="topic" value="{{ topic or '' }}" />
     <div class="gen-ref-toolbar gen-ref-toolbar--solo" id="gen-ref-toolbar-chapter">
       <button type="button" class="button gen-btn-pick gen-btn-pick--template" data-gen-picker="chapter-template">
         报告类型
@@ -79,6 +67,15 @@
           【报告数据配置】
         </p>
       {% endif %}
+      <details class="chapter-tabs-fold">
+        <summary class="chapter-tabs-fold-summary">
+          <span class="chapter-tabs-fold-title">按章填写报告数据</span>
+          <span class="chapter-tabs-fold-action">
+            <span class="chapter-tabs-fold-text chapter-tabs-fold-text--open">展开</span>
+            <span class="chapter-tabs-fold-text chapter-tabs-fold-text--close">折叠</span>
+          </span>
+        </summary>
+        <div class="chapter-tabs-fold-body">
       <div class="chapter-tabs" data-chapter-tabs>
         <div class="chapter-tabs-bar" role="tablist" aria-label="章节块">
           {% for g in chapter_groups %}
@@ -178,12 +175,22 @@
           </div>
         {% endfor %}
       </div>
+        </div>
+      </details>
     {% else %}
-      <p class="error">未产生章节分组，请确认已成功解析且至少有一页内容。</p>
+      {% if is_word_template %}
+        <p class="muted">当前选择的是 Word 模板。选择「Word 表格回填」报告类型后，可直接按学生数据生成。</p>
+      {% else %}
+        <p class="error">未产生章节分组，请确认已成功解析且至少有一页内容。</p>
+      {% endif %}
     {% endif %}
     <div style="margin-top: 14px; display: flex; flex-wrap: wrap; gap: 12px; align-items: center;">
       <button type="submit" id="ai-generate-submit" class="button">开始生成报告</button>
-      <span class="muted">生成在后台进行，可随时查看下方进度；完成后在此查看文档内容并下载 PPT。</span>
+      {% if is_word_template %}
+        <span class="muted">生成在后台进行，可随时查看下方进度；完成后在此查看结果并下载 Word。</span>
+      {% else %}
+        <span class="muted">生成在后台进行，可随时查看下方进度；完成后在此查看文档内容并下载 PPT。</span>
+      {% endif %}
     </div>
     <div id="generate-progress" class="generate-progress" role="status" aria-live="polite">
       <div class="progress-message" id="generate-progress-message"></div>

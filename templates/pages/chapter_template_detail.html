@@ -1,22 +1,22 @@
 {% extends "layout/base.html" %}
-{% block title %}章节模板详情{% endblock %}
+{% block title %}报告类型详情{% endblock %}
 
 {% block content %}
   <div class="breadcrumb">
-    <a href="{{ url_for('web.chapter_templates_list') }}">章节模板管理</a>
+    <a href="{{ url_for('web.chapter_templates_list') }}">报告类型管理</a>
     <span class="breadcrumb-sep">/</span>
     <span>详情</span>
   </div>
 
   <div id="ct-not-found" class="card error" hidden>
-    <p>未找到该模板，可能已被删除或 ID 无效。</p>
+    <p>未找到该报告类型，可能已被删除或 ID 无效。</p>
     <p><a class="button" href="{{ url_for('web.chapter_templates_list') }}">返回列表</a></p>
   </div>
 
   <div id="ct-found" hidden>
     <div class="card">
       <div class="section-head">
-        <h2 style="margin: 0;">模板详情</h2>
+        <h2 style="margin: 0;">报告类型详情</h2>
         <div class="ct-detail-actions">
           <a class="button secondary" href="{{ url_for('web.chapter_templates_list') }}">返回列表</a>
           <a class="button" id="ct-goto-edit" href="#">编辑</a>

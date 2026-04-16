@@ -1,6 +1,6 @@
 """与业务无关的常量。"""
 
-ALLOWED_EXTENSIONS = {"pptx", "ppt"}
+ALLOWED_EXTENSIONS = {"pptx", "ppt", "docx"}
 ALLOWED_CONTENT_EXTENSIONS = {"txt", "md", "markdown", "json", "csv"}
 
 PAGE_TYPE_LABELS = {

@@ -1,5 +1,5 @@
 /**
- * 章节模板列表页：查（列表+搜索）/ 增（新建）/ 改（编辑）/ 删
+ * 报告类型列表页：查（列表+搜索）/ 增（新建）/ 改（编辑）/ 删
  */
 (function () {
   function esc(s) {
@@ -32,10 +32,10 @@
   }
 
   async function deleteTemplate(it) {
-    var name = (it && it.name) || "该模板";
+    var name = (it && it.name) || "该报告类型";
     if (
       !window.confirm(
-        "确定删除章节模板「" + name + "」吗？删除后不可恢复，且不影响已生成的历史文档。",
+        "确定删除报告类型「" + name + "」吗？删除后不可恢复，且不影响已生成的历史文档。",
       )
     ) {
       return;
@@ -63,7 +63,7 @@
     if (!items.length) {
       mount.innerHTML =
         '<p class="muted">' +
-        (q ? "没有符合搜索条件的模板，可清空搜索后重试。" : "暂无章节模板，点击右上角「新建模板」创建第一个。") +
+        (q ? "没有符合搜索条件的报告类型，可清空搜索后重试。" : "暂无报告类型，点击右上角「新建报告类型」创建第一个。") +
         "</p>";
       return;
     }
@@ -102,7 +102,7 @@
       .join("");
 
     mount.innerHTML =
-      '<table class="presentation-table"><thead><tr><th>模板名称</th><th>说明</th><th>章节数</th><th>更新时间</th><th>操作</th></tr></thead><tbody>' +
+      '<table class="presentation-table"><thead><tr><th>报告类型名称</th><th>说明</th><th>章节数</th><th>更新时间</th><th>操作</th></tr></thead><tbody>' +
       rows +
       "</tbody></table>";
 

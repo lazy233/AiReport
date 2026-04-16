@@ -8,7 +8,7 @@ from ppt_report import state
 from ppt_report.models import db
 from ppt_report.services.filled_export_cache import save_filled_export
 from ppt_report.services.chapter_reference_resolve import ppt_reference_slot_rows
-from ppt_report.services.presentation_cache import get_parsed_from_cache
+from ppt_report.services.presentation_cache import get_parsed_from_cache, is_word_stored_payload
 
 log = logging.getLogger(__name__)
 from ppt_report.services.text_generation import generate_text_orchestrated
@@ -97,8 +97,11 @@ def validate_generate_prerequisites(
     selected_slides: list[int],
     chapter_ref: dict | None = None,
 ) -> str | None:
-    if not get_parsed_from_cache(task_id):
+    parsed = get_parsed_from_cache(task_id)
+    if not parsed:
         return "解析结果已失效，请重新上传并解析。"
+    if is_word_stored_payload(parsed if isinstance(parsed, dict) else None):
+        return "该模板为 Word 文档，当前不能用于 PPT 报告生成；请选用已解析的 .pptx。"
     if not selected_slides:
         return "请至少选择一页进行生成。"
     cerr = cover_home_title_validation_error(task_id, selected_slides, chapter_ref)

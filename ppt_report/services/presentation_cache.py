@@ -3,11 +3,19 @@ from __future__ import annotations
 
 import uuid
 from pathlib import Path
+from typing import Any
 
 from ppt_report import config
 from ppt_report import state
 from ppt_report.models import db
 from ppt_report.services.chapter_ref_images import is_safe_task_id, purge_chapter_ref_task_dir
+
+
+def is_word_stored_payload(parsed: dict[str, Any] | None) -> bool:
+    if not isinstance(parsed, dict):
+        return False
+    kind = str(parsed.get("template_kind") or "").strip()
+    return kind in ("word_stored", "word_parsed")
 
 
 def save_parsed_to_cache(parsed: dict) -> str:
@@ -77,13 +85,14 @@ def purge_presentation(task_id: str) -> tuple[bool, str | None]:
     state.LAST_GENERATION.pop(tid, None)
     state.LAST_CHAPTER_REF.pop(tid, None)
 
-    dest = config.UPLOAD_DIR / f"{tid}.pptx"
-    if dest.is_file():
-        try:
-            dest.unlink()
-            removed = True
-        except OSError:
-            pass
+    for ext in (".pptx", ".docx"):
+        dest = config.UPLOAD_DIR / f"{tid}{ext}"
+        if dest.is_file():
+            try:
+                dest.unlink()
+                removed = True
+            except OSError:
+                pass
 
     if purge_chapter_ref_task_dir(tid):
         removed = True

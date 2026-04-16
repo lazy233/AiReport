@@ -1,29 +1,29 @@
 {% extends "layout/base.html" %}
-{% block title %}章节模板管理{% endblock %}
+{% block title %}报告类型管理{% endblock %}
 
 {% block content %}
   <div class="breadcrumb">
     <a href="{{ url_for('web.overview') }}">概览</a>
     <span class="breadcrumb-sep">/</span>
-    <span>章节模板管理</span>
+    <span>报告类型管理</span>
   </div>
 
   <div class="card hero assistant-intro">
     <div class="section-head" style="margin-bottom: 0; align-items: flex-start;">
       <div>
-        <h1 style="margin-bottom: 8px;">章节模板管理</h1>
+        <h1 style="margin-bottom: 8px;">报告类型管理</h1>
         <p class="muted" style="margin: 0;">
-          在此<strong>查看</strong>全部章节模板，可<strong>新建、编辑、删除</strong>；列表支持按名称或说明搜索。
-          模板用于约束「一份 PPT 应包含哪些章节」，数据持久化在数据库。
+          在此<strong>查看</strong>全部报告类型，可<strong>新建、编辑、删除</strong>；列表支持按名称或说明搜索。
+          报告类型用于约束「一份成品文档应包含哪些章节」，数据持久化在数据库。
         </p>
       </div>
-      <a class="button" href="{{ url_for('web.chapter_template_new') }}">新建模板</a>
+      <a class="button" href="{{ url_for('web.chapter_template_new') }}">新建报告类型</a>
     </div>
   </div>
 
   <div class="card">
     <div class="section-head" style="flex-wrap: wrap; gap: 12px;">
-      <h2 class="h-inline" style="margin: 0;">模板列表</h2>
+      <h2 class="h-inline" style="margin: 0;">报告类型列表</h2>
       <div class="slide-actions" style="gap: 8px; flex-wrap: wrap; align-items: center;">
         <label class="muted" style="display: flex; align-items: center; gap: 8px; margin: 0;">
           <span>搜索</span>

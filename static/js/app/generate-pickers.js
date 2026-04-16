@@ -1,10 +1,11 @@
 /**
- * 文档生成：章节模板 / 学生数据 列表选择（调用现有 /api/* 列表接口）
+ * 文档生成：报告类型 / 学生数据 列表选择（调用现有 /api/* 列表接口）
  */
 (function () {
   var backdrop = null;
   var currentMode = null;
   var itemsCache = [];
+  var WORD_REPORT_TEMPLATE_CODE = "word_table_fill";
 
   function esc(s) {
     var d = document.createElement("div");
@@ -14,6 +15,26 @@
 
   function getForm() {
     return document.getElementById("ai-generate-form");
+  }
+
+  function getGenerateMode(form) {
+    var mode = form && form.getAttribute("data-gen-mode");
+    return mode === "word" ? "word" : "ppt";
+  }
+
+  function setGenerateMode(form, mode) {
+    if (!form) return;
+    var next = mode === "word" ? "word" : "ppt";
+    form.setAttribute("data-gen-mode", next);
+    var chapterFold = form.querySelector(".chapter-tabs-fold");
+    if (chapterFold) chapterFold.hidden = next === "word";
+    var wordNote = form.querySelector("[data-word-mode-note]");
+    if (wordNote) wordNote.hidden = next !== "word";
+    var selectedSlidesHidden = form.querySelector("#selected-slides-hidden");
+    if (selectedSlidesHidden && next === "word") selectedSlidesHidden.innerHTML = "";
+    if (window.PptApp && typeof window.PptApp.refreshGenerateTaskOptions === "function") {
+      window.PptApp.refreshGenerateTaskOptions();
+    }
   }
 
   /** PPT 解析结果中「章」块数量（kind=chapter，不含首页/目录/其他） */
@@ -54,6 +75,7 @@
 
   async function applyDefaultChapterTemplate(form) {
     if (!form) return;
+    if (window.__generateWorkspaceTab === "word") return;
     var el = form.querySelector("#gen-chapter-template-id");
     if (!el) return;
     if ((el.value || "").trim()) return;
@@ -66,13 +88,17 @@
         return n === DEFAULT_CHAPTER_TEMPLATE_NAME || n.indexOf(DEFAULT_CHAPTER_TEMPLATE_NAME) !== -1;
       });
       if (!found || !found.id) return;
-      await pickChapterTemplate(String(found.id), (found.name || "").trim() || DEFAULT_CHAPTER_TEMPLATE_NAME);
+      await pickChapterTemplate(
+        String(found.id),
+        (found.name || "").trim() || DEFAULT_CHAPTER_TEMPLATE_NAME,
+        String(found.templateCode || "").trim(),
+      );
     } catch (e) {
       /* 静默失败，用户可手动选择 */
     }
   }
 
-  async function pickChapterTemplate(id, primary) {
+  async function pickChapterTemplate(id, primary, forcedTemplateCode) {
     var form = getForm();
     if (!form || !id) return false;
     try {
@@ -83,11 +109,23 @@
         return false;
       }
       var item = data.item || {};
+      var templateCode = String(forcedTemplateCode || item.templateCode || "").trim();
+      var ws = window.__generateWorkspaceTab === "word" ? "word" : "ppt";
+      if (ws === "word" && templateCode !== WORD_REPORT_TEMPLATE_CODE) {
+        window.alert("当前为 Word 生成：请仅选择「Word 表格回填」报告类型。");
+        return false;
+      }
+      if (ws === "ppt" && templateCode === WORD_REPORT_TEMPLATE_CODE) {
+        window.alert("当前为 PPT 生成：请选择含章节的报告类型（非 Word 专用）。");
+        return false;
+      }
+      var isWordMode = templateCode === WORD_REPORT_TEMPLATE_CODE;
       var tplCount = item.chapterCount;
       if (tplCount == null && Array.isArray(item.chapters)) {
         tplCount = item.chapters.length;
       }
-      if (!applyChapterTemplateAutoSelect(form, tplCount)) return false;
+      if (!isWordMode && !applyChapterTemplateAutoSelect(form, tplCount)) return false;
+      setGenerateMode(form, isWordMode ? "word" : "ppt");
       setChapterTemplate(id, primary);
       if (typeof form._resyncChapters === "function") form._resyncChapters();
       return true;
@@ -129,7 +167,11 @@
     if (!el) return;
     el.value = id || "";
     if (id) el.setAttribute("data-label", label || "");
-    else el.removeAttribute("data-label");
+    else {
+      el.removeAttribute("data-label");
+      var ws = window.__generateWorkspaceTab === "word" ? "word" : "ppt";
+      setGenerateMode(form, ws);
+    }
     syncRefPicksUi();
     if (window.PptApp && window.PptApp.resetChapterReferenceUi) {
       window.PptApp.resetChapterReferenceUi(getForm());
@@ -256,6 +298,10 @@
       var sub = "";
       if (currentMode === "chapter-template") {
         primary = it.name || id;
+        var tCode = String(it.templateCode || "").trim();
+        if (tCode === WORD_REPORT_TEMPLATE_CODE && window.__generateWorkspaceTab !== "word") {
+          primary = "【Word】" + primary;
+        }
         sub =
           (it.chapterCount != null ? it.chapterCount + " 章 · " : "") +
           (it.updatedAt ? String(it.updatedAt).slice(0, 10) : "");
@@ -265,6 +311,9 @@
       }
       btn.setAttribute("data-pick-id", id);
       btn.setAttribute("data-pick-label", primary);
+      if (currentMode === "chapter-template") {
+        btn.setAttribute("data-pick-template-code", String(it.templateCode || "").trim());
+      }
       btn.innerHTML =
         '<span class="gen-picker-row-main">' + esc(primary) + "</span>" +
         (sub ? '<span class="gen-picker-row-sub muted">' + esc(sub) + "</span>" : "");
@@ -274,7 +323,8 @@
           if (!form) return;
           btn.disabled = true;
           try {
-            var ok = await pickChapterTemplate(id, primary);
+            var templateCode = btn.getAttribute("data-pick-template-code") || "";
+            var ok = await pickChapterTemplate(id, primary, templateCode);
             if (ok) closeModal();
           } finally {
             btn.disabled = false;
@@ -320,6 +370,14 @@
         throw new Error(data.error || "加载失败");
       }
       itemsCache = data.items || [];
+      if (mode === "chapter-template") {
+        itemsCache = itemsCache.filter(function (it) {
+          var code = String(it.templateCode || "").trim();
+          var wspace = window.__generateWorkspaceTab === "word" ? "word" : "ppt";
+          if (wspace === "word") return code === WORD_REPORT_TEMPLATE_CODE;
+          return code !== WORD_REPORT_TEMPLATE_CODE;
+        });
+      }
       if (loading) loading.hidden = true;
       renderList(itemsCache, "");
     } catch (e) {
@@ -356,8 +414,43 @@
     }
   });
 
+  /**
+   * 切换 PPT 模板后恢复「报告类型 / 学生数据」（与 readGenerateRefPickSnapshot 配对使用）。
+   * @param {HTMLFormElement|null} form
+   * @param {{ chapterId?: string, chapterLabel?: string, studentId?: string, studentLabel?: string }|null} snap
+   */
+  async function restoreGenerateRefPicks(form, snap) {
+    if (!form || !snap) return;
+    var wantedChapter = !!(snap.chapterId && String(snap.chapterId).trim());
+    if (snap.chapterId) {
+      var ok = await pickChapterTemplate(String(snap.chapterId), String(snap.chapterLabel || snap.chapterId || "").trim());
+      if (!ok) setChapterTemplate("", "");
+    }
+    if (snap.studentId) {
+      setStudentData(String(snap.studentId), String(snap.studentLabel || "").trim());
+    }
+    var taskInp = form.querySelector('input[name="task_id"]');
+    var taskId = taskInp ? String(taskInp.value || "").trim() : "";
+    var chEl = form.querySelector("#gen-chapter-template-id");
+    var hasChapter = chEl && String(chEl.value || "").trim();
+    if (wantedChapter && taskId && !hasChapter) {
+      await applyDefaultChapterTemplate(form);
+    }
+  }
+
   window.PptApp = window.PptApp || {};
   window.PptApp.syncGenerateRefPicksUi = syncRefPicksUi;
   window.PptApp.applyDefaultChapterTemplate = applyDefaultChapterTemplate;
   window.PptApp.pickChapterTemplate = pickChapterTemplate;
+  window.PptApp.restoreGenerateRefPicks = restoreGenerateRefPicks;
+  window.PptApp.getGenerateMode = function () {
+    return getGenerateMode(getForm());
+  };
+  window.PptApp.setGenerateMode = function (mode) {
+    setGenerateMode(getForm(), mode);
+    syncRefPicksUi();
+  };
+  window.PptApp.clearChapterTemplatePick = function () {
+    setChapterTemplate("", "");
+  };
 })();

@@ -20,7 +20,9 @@ from ppt_report.services.async_jobs import (
     _create_generate_job_record,
     _create_parse_job_record,
     _generate_job_worker,
+    _generate_word_job_worker,
     _parse_job_worker,
+    _word_parse_worker,
     snapshot_generate_job,
     snapshot_parse_job,
 )
@@ -36,15 +38,28 @@ from ppt_report.services.page_types import compute_chapter_selection_groups
 from ppt_report.services.presentation_cache import (
     bump_parsed_file_name_in_cache,
     get_parsed_from_cache,
+    is_word_stored_payload,
     purge_presentation,
     resolve_template_path,
 )
 from ppt_report.services.pptx_document import apply_generation_to_presentation
 from ppt_report.services.student_guidance_ai import generate_student_guidance
 from ppt_report.services.filled_export_cache import resolve_filled_export_path
+from ppt_report.services.word_generation import fill_word_table_for_student
 from ppt_report.utils.files import allowed_file
 
 api_bp = Blueprint("api", __name__, url_prefix="/api")
+WORD_REPORT_TEMPLATE_CODE = "word_table_fill"
+
+
+def _is_word_report_type(template_id: str) -> bool:
+    tid = (template_id or "").strip()
+    if not tid:
+        return False
+    item = db_mod.get_chapter_template(tid)
+    if not isinstance(item, dict):
+        return False
+    return str(item.get("templateCode") or "").strip() == WORD_REPORT_TEMPLATE_CODE
 
 
 @api_bp.get("/presentations")
@@ -184,6 +199,11 @@ def api_resolve_chapter_reference():
     task_id = (body.get("task_id") or "").strip()
     chapter_template_id = (body.get("chapter_template_id") or "").strip()
     student_data_id = (body.get("student_data_id") or "").strip()
+    parsed_chk = get_parsed_from_cache(task_id)
+    if not parsed_chk:
+        return jsonify({"ok": False, "error": "未找到该解析记录。"}), 404
+    if is_word_stored_payload(parsed_chk if isinstance(parsed_chk, dict) else None):
+        return jsonify({"ok": False, "error": "Word 文档不能用于章节解析。"}), 400
     use_llm = body.get("use_llm")
     if use_llm is None:
         use_llm = True
@@ -349,13 +369,47 @@ def api_generation_history_download(record_id: str):
     if not rec:
         return jsonify({"ok": False, "error": "记录不存在，可能已被删除。"}), 404
 
-    cached = resolve_filled_export_path(record_id)
+    result_obj = rec.get("result") if isinstance(rec.get("result"), dict) else {}
+    output_kind = "docx" if str(result_obj.get("output_kind") or "").strip() == "docx" else "pptx"
+
+    cached = resolve_filled_export_path(record_id, output_kind)
     if cached:
+        is_docx = cached.suffix.lower() == ".docx"
         return send_file(
             cached,
             as_attachment=True,
-            download_name=f"history_{record_id}_filled.pptx",
-            mimetype="application/vnd.openxmlformats-officedocument.presentationml.presentation",
+            download_name=f"history_{record_id}_filled{'.docx' if is_docx else '.pptx'}",
+            mimetype=(
+                "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                if is_docx
+                else "application/vnd.openxmlformats-officedocument.presentationml.presentation"
+            ),
+        )
+
+    if output_kind == "docx":
+        fill = result_obj.get("word_fill_summary") if isinstance(result_obj.get("word_fill_summary"), dict) else {}
+        task_id = str(fill.get("task_id") or rec.get("taskId") or "").strip()
+        student_data_id = str(fill.get("student_data_id") or "").strip()
+        if not task_id or not student_data_id:
+            return (
+                jsonify(
+                    {
+                        "ok": False,
+                        "error": "历史缓存文件不存在，且记录缺少 Word 回填所需数据，无法下载。请重新生成。",
+                    },
+                ),
+                410,
+            )
+        out = config.FILLED_EXPORT_DIR / f"{record_id}.docx"
+        try:
+            fill_word_table_for_student(task_id, student_data_id, output_path=out)
+        except Exception as exc:  # noqa: BLE001
+            return jsonify({"ok": False, "error": str(exc)}), 410
+        return send_file(
+            out,
+            as_attachment=True,
+            download_name=f"history_{record_id}_filled.docx",
+            mimetype="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
         )
 
     task_id = str(rec.get("taskId") or "").strip()
@@ -413,26 +467,44 @@ def api_generation_history_download(record_id: str):
 def api_parse_start():
     file = request.files.get("ppt_file")
     if not file or not file.filename:
-        return jsonify({"ok": False, "error": "请先选择一个 PPT 文件。"}), 400
+        return jsonify({"ok": False, "error": "请先选择一个文件。"}), 400
     if not allowed_file(file.filename):
-        return jsonify({"ok": False, "error": "只支持 .pptx 或 .ppt 文件。"}), 400
+        return jsonify({"ok": False, "error": "只支持 .pptx、.ppt 或 .docx 文件。"}), 400
     lower = file.filename.lower()
+    is_docx = lower.endswith(".docx")
     if lower.endswith(".ppt") and not lower.endswith(".pptx"):
         return jsonify({"ok": False, "error": "当前仅支持 .pptx 解析，请先将 .ppt 转为 .pptx。"}), 400
 
-    orig_name = secure_filename(file.filename) or "presentation.pptx"
-    tmp_path = config.UPLOAD_DIR / f"_parse_tmp_{uuid.uuid4().hex}.pptx"
-    file.save(str(tmp_path))
-
     replace_raw = (request.form.get("replace_task_id") or "").strip()
     replace_tid = replace_raw if replace_raw and is_safe_task_id(replace_raw) else None
+    if replace_tid:
+        prev = get_parsed_from_cache(replace_tid)
+        prev_word = is_word_stored_payload(prev) if isinstance(prev, dict) else False
+        if prev is None:
+            return jsonify({"ok": False, "error": "未找到要替换的模板记录，可能已删除。"}), 400
+        if prev_word and not is_docx:
+            return jsonify({"ok": False, "error": "该条目为 Word 模板，请仅上传 .docx 替换。"}), 400
+        if not prev_word and is_docx:
+            return jsonify({"ok": False, "error": "该条目为已解析的 PPT，请上传 .pptx 替换。"}), 400
+
+    orig_name = secure_filename(file.filename) or ("document.docx" if is_docx else "presentation.pptx")
+    suffix = ".docx" if is_docx else ".pptx"
+    tmp_path = config.UPLOAD_DIR / f"_parse_tmp_{uuid.uuid4().hex}{suffix}"
+    file.save(str(tmp_path))
 
     job_poll_id = _create_parse_job_record()
-    threading.Thread(
-        target=_parse_job_worker,
-        args=(job_poll_id, tmp_path, orig_name, replace_tid),
-        daemon=True,
-    ).start()
+    if is_docx:
+        threading.Thread(
+            target=_word_parse_worker,
+            args=(job_poll_id, tmp_path, orig_name, replace_tid),
+            daemon=True,
+        ).start()
+    else:
+        threading.Thread(
+            target=_parse_job_worker,
+            args=(job_poll_id, tmp_path, orig_name, replace_tid),
+            daemon=True,
+        ).start()
     return jsonify({"ok": True, "job_id": job_poll_id})
 
 
@@ -448,6 +520,8 @@ def api_parse_status(job_id: str):
 def api_generate_start():
     task_id = request.form.get("task_id")
     topic = (request.form.get("topic") or "").strip()
+    chapter_template_id = (request.form.get("chapter_template_id") or "").strip()
+    student_data_id = (request.form.get("student_data_id") or "").strip()
     selected_slides = sorted(
         {
             int(x)
@@ -467,6 +541,24 @@ def api_generate_start():
     err, merged_extra = merge_extra_from_upload("", None)
     if err:
         return jsonify({"ok": False, "error": err}), 400
+    if not chapter_template_id:
+        return jsonify({"ok": False, "error": "请选择报告类型。"}), 400
+    if _is_word_report_type(chapter_template_id):
+        parsed = get_parsed_from_cache(task_id)
+        if not parsed:
+            return jsonify({"ok": False, "error": "未找到模板记录，请重新选择。"}), 400
+        if not is_word_stored_payload(parsed if isinstance(parsed, dict) else None):
+            return jsonify({"ok": False, "error": "Word 报告类型仅支持 Word 模板。"}), 400
+        if not student_data_id:
+            return jsonify({"ok": False, "error": "请选择学生数据。"}), 400
+        job_id = _create_generate_job_record(task_id)
+        threading.Thread(
+            target=_generate_word_job_worker,
+            args=(job_id, task_id, topic, merged_extra, selected_slides),
+            kwargs={"student_data_id": student_data_id},
+            daemon=True,
+        ).start()
+        return jsonify({"ok": True, "job_id": job_id})
     err = validate_generate_prerequisites(
         task_id, topic, merged_extra, selected_slides, chapter_ref
     )
@@ -495,6 +587,8 @@ def api_generate():
     task_id = data.get("task_id")
     topic = data.get("topic") or ""
     extra_content = data.get("extra_content") or ""
+    chapter_template_id = str(data.get("chapter_template_id") or "").strip()
+    student_data_id = str(data.get("student_data_id") or "").strip()
     slides = data.get("selected_slides") or data.get("slides") or []
     selected_slides = sorted(
         {
@@ -516,6 +610,13 @@ def api_generate():
                     chapter_ref = loaded
             except (json.JSONDecodeError, TypeError, ValueError):
                 chapter_ref = None
+
+    if chapter_template_id and _is_word_report_type(chapter_template_id):
+        try:
+            summary = fill_word_table_for_student(str(task_id or "").strip(), student_data_id)
+        except Exception as exc:  # noqa: BLE001
+            return jsonify({"ok": False, "error": str(exc)}), 400
+        return jsonify({"ok": True, "data": {"output_kind": "docx", "word_fill_summary": summary}})
 
     err, result, _ = run_generate(
         task_id, topic, extra_content, selected_slides, None, chapter_ref=chapter_ref

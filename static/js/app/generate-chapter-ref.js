@@ -31,11 +31,15 @@
   function collectGenerateValidationMessages(form) {
     var msgs = [];
     if (!form) return ["表单未就绪。"];
+    var mode =
+      window.PptApp && typeof window.PptApp.getGenerateMode === "function"
+        ? window.PptApp.getGenerateMode()
+        : "ppt";
     var taskId = getTaskId(form);
     if (!taskId) {
-      msgs.push("请先选择已解析的 PPT。");
+      msgs.push(mode === "word" ? "请先选择已解析的 Word 模板。" : "请先选择已解析的 PPT 模板。");
     }
-    if (!form.querySelector(".chapter-tabs")) {
+    if (mode !== "word" && !form.querySelector(".chapter-tabs")) {
       msgs.push("章节结构未加载，请稍后重试或刷新页面。");
     }
     var tplId = (form.querySelector("#gen-chapter-template-id") || {}).value || "";
@@ -46,7 +50,7 @@
     if (!String(sid).trim()) {
       msgs.push("请选择学生数据。");
     }
-    if (!form._chapterRefResolved) {
+    if (mode !== "word" && !form._chapterRefResolved) {
       msgs.push(
         "请等待「解析到 PPT」完成（字段分配成功后再生成）；若失败可点「重新解析」重试。",
       );
@@ -249,6 +253,11 @@
       _autoResolveDebounce = null;
       var form = getForm();
       if (!form) return;
+      var mode =
+        window.PptApp && typeof window.PptApp.getGenerateMode === "function"
+          ? window.PptApp.getGenerateMode()
+          : "ppt";
+      if (mode === "word") return;
       var taskId = getTaskId(form);
       if (!taskId) return;
       var tid = (form.querySelector("#gen-chapter-template-id") || {}).value || "";
@@ -267,8 +276,12 @@
     var taskId = getTaskId(form);
     var tid = (form.querySelector("#gen-chapter-template-id") || {}).value || "";
     var sid = (form.querySelector("#gen-student-data-id") || {}).value || "";
-    row.hidden = !(taskId && tid && sid);
-    if (taskId && tid && sid) {
+    var mode =
+      window.PptApp && typeof window.PptApp.getGenerateMode === "function"
+        ? window.PptApp.getGenerateMode()
+        : "ppt";
+    row.hidden = mode === "word" || !(taskId && tid && sid);
+    if (mode !== "word" && taskId && tid && sid) {
       scheduleAutoResolve();
     } else if (_autoResolveDebounce) {
       clearTimeout(_autoResolveDebounce);
@@ -773,6 +786,11 @@
     var form = getForm();
     var btn = document.getElementById("gen-resolve-to-ppt");
     if (!form || !btn) return;
+    var mode =
+      window.PptApp && typeof window.PptApp.getGenerateMode === "function"
+        ? window.PptApp.getGenerateMode()
+        : "ppt";
+    if (mode === "word") return;
     var tid = (form.querySelector("#gen-chapter-template-id") || {}).value || "";
     var sid = (form.querySelector("#gen-student-data-id") || {}).value || "";
     var taskInp = form.querySelector('input[name="task_id"]');

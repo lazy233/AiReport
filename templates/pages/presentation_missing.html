@@ -5,7 +5,7 @@
   <div class="card">
     <h1>未找到解析记录</h1>
     <p class="error">任务 ID：<code>{{ task_id }}</code> 在数据库或当前缓存中不存在。</p>
-    <p class="muted">可能已被清理、数据库未连接，或链接已失效。请从 PPT模板管理 列表重新进入或重新上传。</p>
-    <p><a class="button" href="{{ url_for('web.assistant_upload') }}">返回 PPT模板管理</a></p>
+    <p class="muted">可能已被清理、数据库未连接，或链接已失效。请从文档模板管理列表重新进入或重新上传。</p>
+    <p><a class="button" href="{{ url_for('web.assistant_upload') }}">返回文档模板管理</a></p>
   </div>
 {% endblock %}

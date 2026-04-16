@@ -1,4 +1,4 @@
-"""生成历史对应的回填成品 .pptx 磁盘缓存（用于保留期届满时一并删除）。"""
+"""生成历史对应的回填成品缓存（.pptx/.docx）。"""
 from __future__ import annotations
 
 import logging
@@ -16,11 +16,12 @@ log = logging.getLogger(__name__)
 _SAFE_ID = re.compile(r"^[0-9a-fA-F-]{36}$")
 
 
-def _path_for_id(history_id: str) -> Path | None:
+def _path_for_id(history_id: str, ext: str = "pptx") -> Path | None:
     hid = (history_id or "").strip()
     if not _SAFE_ID.match(hid):
         return None
-    return config.FILLED_EXPORT_DIR / f"{hid}.pptx"
+    safe_ext = "docx" if str(ext).lower().strip() == "docx" else "pptx"
+    return config.FILLED_EXPORT_DIR / f"{hid}.{safe_ext}"
 
 
 def save_filled_export(
@@ -32,7 +33,7 @@ def save_filled_export(
     """将回填后的演示文稿写入 filled_exports/{history_id}.pptx。"""
     if not isinstance(generated, dict):
         return False
-    out = _path_for_id(history_id)
+    out = _path_for_id(history_id, "pptx")
     if out is None:
         return False
     tpl = resolve_template_path(task_id)
@@ -57,28 +58,36 @@ def save_filled_export(
 
 
 def delete_filled_export(history_id: str) -> None:
-    p = _path_for_id(history_id)
-    if p is None or not p.is_file():
-        return
-    try:
-        if p.resolve().parent != config.FILLED_EXPORT_DIR.resolve():
-            return
-    except OSError:
-        return
-    try:
-        p.unlink()
-    except OSError:
-        pass
+    for ext in ("pptx", "docx"):
+        p = _path_for_id(history_id, ext)
+        if p is None or not p.is_file():
+            continue
+        try:
+            if p.resolve().parent != config.FILLED_EXPORT_DIR.resolve():
+                continue
+        except OSError:
+            continue
+        try:
+            p.unlink()
+        except OSError:
+            pass
 
 
-def resolve_filled_export_path(history_id: str) -> Path | None:
+def resolve_filled_export_path(history_id: str, ext: str | None = None) -> Path | None:
     """返回历史缓存成品路径（仅当文件存在时）。"""
-    p = _path_for_id(history_id)
-    if p is None or not p.is_file():
-        return None
-    try:
-        if p.resolve().parent != config.FILLED_EXPORT_DIR.resolve():
-            return None
-    except OSError:
-        return None
-    return p
+    wanted = []
+    if ext:
+        wanted.append("docx" if str(ext).lower().strip() == "docx" else "pptx")
+    else:
+        wanted.extend(["pptx", "docx"])
+    for one in wanted:
+        p = _path_for_id(history_id, one)
+        if p is None or not p.is_file():
+            continue
+        try:
+            if p.resolve().parent != config.FILLED_EXPORT_DIR.resolve():
+                continue
+        except OSError:
+            continue
+        return p
+    return None

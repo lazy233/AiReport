@@ -3,7 +3,7 @@
 
 {% block content %}
   <div class="breadcrumb">
-    <a href="{{ url_for('web.assistant_upload') }}">PPT模板管理</a>
+    <a href="{{ url_for('web.assistant_upload') }}">文档模板管理</a>
     <span class="breadcrumb-sep">/</span>
     <span>解析详情</span>
   </div>
@@ -11,7 +11,11 @@
   {% include "partials/ppt/_parse_details.html" %}
   <div class="card">
     <p style="margin: 0;">
-      <a class="button secondary" href="{{ url_for('web.assistant_generate') }}?task_id={{ task_id | urlencode }}">去「报告生成」使用此模板</a>
+      {% if is_word_stored %}
+        <span class="muted">该 Word 文档已完成文本结构解析（标题/段落/表格），但不参与 PPT 报告生成；请选用已解析的 .pptx 模板前往报告生成。</span>
+      {% else %}
+        <a class="button secondary" href="{{ url_for('web.assistant_generate') }}?task_id={{ task_id | urlencode }}">去「报告生成」使用此模板</a>
+      {% endif %}
     </p>
   </div>
 {% endblock %}

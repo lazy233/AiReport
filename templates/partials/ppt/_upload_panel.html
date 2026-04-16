@@ -3,12 +3,12 @@
   <div class="ppt-upload-requirement" role="note" aria-live="polite">
     <span class="ppt-upload-requirement-kicker">重要</span>
     <p class="ppt-upload-requirement-body">
-      上传的 PPT 必须为<strong>成品报告</strong>（版式与内容已定型、可直接作为范例的完整报告），请勿使用草稿或半成品，以免影响解析与后续报告生成效果。
+      <strong>PPT（.pptx）</strong>须为<strong>成品报告</strong>，将走解析与页类型识别。<strong>Word（.docx）</strong>会解析标题/段落/表格并存档；但仍不参与报告生成中的幻灯片流程。
     </p>
   </div>
   <form id="parse-upload-form" method="post" enctype="multipart/form-data" class="parse-upload-form">
     <div class="ppt-upload-field">
-      <label class="ppt-upload-label" for="ppt-file-input">PPT 文件</label>
+      <label class="ppt-upload-label" for="ppt-file-input">PPT 或 Word 文件</label>
       <div
         class="ppt-dropzone"
         id="ppt-dropzone"
@@ -21,7 +21,7 @@
           name="ppt_file"
           id="ppt-file-input"
           class="ppt-file-input-hidden"
-          accept=".ppt,.pptx"
+          accept=".ppt,.pptx,.docx"
           required
         />
         <div class="ppt-dropzone-inner">
@@ -32,7 +32,7 @@
               <line x1="12" y1="3" x2="12" y2="15"></line>
             </svg>
           </div>
-          <p class="ppt-dropzone-title">拖拽 .pptx 到此处上传</p>
+          <p class="ppt-dropzone-title">拖拽 .pptx 或 .docx 到此处上传</p>
           <button type="button" class="button secondary ppt-browse-btn" id="ppt-browse-btn">从本机选择</button>
           <p class="ppt-file-name" id="ppt-file-name" hidden></p>
         </div>

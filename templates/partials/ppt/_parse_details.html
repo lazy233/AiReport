@@ -1,3 +1,63 @@
+{% if is_word_stored %}
+  <div class="card" style="margin-top: 18px;">
+    <p class="muted" style="margin-top: 0;">Word 解析结果（按文档顺序）：标题、段落与表格。</p>
+    {% set sections = parsed.sections or [] %}
+    {% if sections %}
+      <div class="table-scroll" style="margin-top: 12px;">
+        <table>
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>类型</th>
+              <th>摘要</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for sec in sections %}
+              <tr>
+                <td>{{ sec.index or loop.index }}</td>
+                <td>
+                  {% if sec.type == "heading" %}
+                    标题{% if sec.level %} H{{ sec.level }}{% endif %}
+                  {% elif sec.type == "paragraph" %}
+                    段落
+                  {% elif sec.type == "table" %}
+                    表格（{{ sec.row_count or 0 }}x{{ sec.col_count or 0 }}）
+                  {% else %}
+                    {{ sec.type or "未知" }}
+                  {% endif %}
+                </td>
+                <td>
+                  {% if sec.type == "table" %}
+                    {% set rows = sec.rows or [] %}
+                    {% if rows %}
+                      {{ (rows[0] | join(" | "))[:180] }}{% if (rows[0] | join(" | "))|length > 180 %}…{% endif %}
+                    {% else %}
+                      -
+                    {% endif %}
+                  {% else %}
+                    {{ (sec.text or "-")[:220] }}{% if (sec.text or "")|length > 220 %}…{% endif %}
+                  {% endif %}
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <p class="muted" style="margin-top: 10px;">文档中未提取到可展示的段落或表格内容。</p>
+    {% endif %}
+    <details class="json-details" style="margin-top: 16px;">
+      <summary>
+        <span>查看记录 JSON</span>
+        <span class="summary-meta">默认折叠</span>
+      </summary>
+      <div class="details-body">
+        <pre>{{ parsed_json }}</pre>
+      </div>
+    </details>
+  </div>
+{% else %}
 <details class="card" style="margin-top: 18px; padding: 0; overflow: hidden;">
   <summary>
     <span>高级：查看解析详情</span>
@@ -64,3 +124,4 @@
     </details>
   </div>
 </details>
+{% endif %}

@@ -10,6 +10,10 @@
     return name.endsWith(".pptx");
   }
 
+  function isDocxName(name) {
+    return name.endsWith(".docx");
+  }
+
   function isPptOnlyName(name) {
     return name.endsWith(".ppt") && !name.endsWith(".pptx");
   }
@@ -56,8 +60,8 @@
     function assignPptFile(file) {
       if (!file) return false;
       var name = lowerName(file);
-      if (!isPptxName(name) && !isPptOnlyName(name)) {
-        showReject("请上传 .pptx 或 .ppt 文件。");
+      if (!isPptxName(name) && !isDocxName(name) && !isPptOnlyName(name)) {
+        showReject("请上传 .pptx、.docx 或 .ppt 文件。");
         return false;
       }
       if (isPptOnlyName(name)) {
@@ -163,6 +167,7 @@
       if (s.status === "done") pct = 100;
       else if (s.status === "error") pct = 0;
       else if (ph === "queued") pct = 8;
+      else if (ph === "storing") pct = 72;
       else if (ph === "parsing") pct = 45;
       else if (ph === "classifying") pct = 78;
       if (bar) bar.style.width = pct + "%";
@@ -176,18 +181,19 @@
         errEl.textContent = "";
       }
       if (!fileInput.files || !fileInput.files.length) {
-        showReject("请先选择或拖入一个 .pptx 文件。");
+        showReject("请先选择或拖入一个 .pptx 或 .docx 文件。");
         return;
       }
       var fn = lowerName(fileInput.files[0]);
-      if (!isPptxName(fn)) {
-        showReject("请上传 .pptx 文件后再提交。");
+      if (!isPptxName(fn) && !isDocxName(fn)) {
+        showReject("请上传 .pptx 或 .docx 后再提交。");
         return;
       }
 
       setParseRunning(true);
       if (bar) bar.style.width = "5%";
-      if (msg) msg.textContent = "正在上传文件…";
+      if (msg)
+        msg.textContent = isDocxName(fn) ? "正在上传 Word 文档…" : "正在上传文件…";
 
       var fd = new FormData(form);
       var jobId;
@@ -232,7 +238,11 @@
         }
         applyParsePhase(s);
         if (s.status === "done" && s.task_id) {
-          if (msg) msg.textContent = "解析完成，已保存到数据库，正在刷新列表…";
+          var doneFn = fileInput.files && fileInput.files[0] ? lowerName(fileInput.files[0].name) : "";
+          if (msg)
+            msg.textContent = isDocxName(doneFn)
+              ? "Word 解析完成，正在刷新列表…"
+              : "解析完成，已保存到数据库，正在刷新列表…";
           if (bar) bar.style.width = "100%";
           var orig =
             fileInput.files && fileInput.files[0] && fileInput.files[0].name

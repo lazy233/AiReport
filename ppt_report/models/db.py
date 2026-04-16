@@ -6,7 +6,7 @@ from __future__ import annotations
 
 import logging
 import re
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, timedelta, timezone
 from typing import Any
 from uuid import uuid4
 
@@ -231,6 +231,9 @@ class ChapterTemplateChapter(Base):
     )
 
 
+WORD_TABLE_FILL_TEMPLATE_CODE = "word_table_fill"
+
+
 def _norm_str(v: object, max_len: int | None = None) -> str:
     s = "" if v is None else str(v).strip()
     return s[:max_len] if max_len and max_len > 0 else s
@@ -353,6 +356,11 @@ def init_db(database_url: str | None) -> bool:
         Base.metadata.create_all(bind=_engine)
         with _engine.connect() as conn:
             conn.execute(text("SELECT 1"))
+        try:
+            with _SessionLocal() as s:
+                _ensure_word_table_fill_template(s)
+        except Exception:
+            log.exception("Word 表格回填报告类型种子失败（可在「报告类型管理」中手动新建并勾选 Word 特殊类型）。")
         log.info(
             "数据库已连接，表 parsed_presentations/generation_histories/students/"
             "student_term_profiles/chapter_templates/chapter_template_chapters 就绪。",
@@ -411,6 +419,11 @@ def _parse_impl_label_from_payload(payload: Any) -> str:
     """列表展示用：区分本地解析与是否经大模型页类型标注。"""
     if not isinstance(payload, dict):
         return "—"
+    tk = str(payload.get("template_kind") or "").strip()
+    if tk == "word_stored":
+        return "Word 文档（仅存储）"
+    if tk == "word_parsed":
+        return "Word 文档（已解析）"
     slides = payload.get("slides")
     if not isinstance(slides, list) or not slides:
         return "本地解析"
@@ -504,6 +517,8 @@ def list_generation_history_summaries(query: str = "", limit: int = 200) -> list
     out: list[dict[str, object]] = []
     for r in rows:
         created = r.created_at
+        res = r.result if isinstance(r.result, dict) else {}
+        output_kind = "docx" if str(res.get("output_kind") or "").strip() == "docx" else "pptx"
         out.append(
             {
                 "id": r.id,
@@ -511,6 +526,7 @@ def list_generation_history_summaries(query: str = "", limit: int = 200) -> list
                 "topic": r.topic or "",
                 "createdAt": created.isoformat() if created else "",
                 "slideCount": int(r.slide_count or 0),
+                "outputKind": output_kind,
             },
         )
     return out
@@ -534,6 +550,7 @@ def get_generation_history(record_id: str) -> dict[str, object] | None:
             "createdAt": created.isoformat() if created else "",
             "selectedSlides": list(row.selected_slides) if isinstance(row.selected_slides, list) else [],
             "result": res,
+            "outputKind": "docx" if str(res.get("output_kind") or "").strip() == "docx" else "pptx",
         }
 
 
@@ -616,6 +633,73 @@ def get_overview_stats() -> dict[str, Any]:
         return {**base, "db_enabled": True}
 
 
+def _empty_gen_by_day_labels() -> list[dict[str, Any]]:
+    now = datetime.now(timezone.utc)
+    today = now.date()
+    out: list[dict[str, Any]] = []
+    for i in range(7):
+        d = today - timedelta(days=6 - i)
+        out.append({"label": f"{d.month}/{d.day}", "count": 0})
+    return out
+
+
+def get_overview_chart_data() -> dict[str, Any]:
+    """首页图表：近 7 日生成条数、全部历史上 PPT/Word 产物数量。"""
+    empty: dict[str, Any] = {
+        "gen_by_day": _empty_gen_by_day_labels(),
+        "output_pptx": 0,
+        "output_docx": 0,
+        "bar_max": 1,
+    }
+    if not _SessionLocal:
+        return empty
+    now = datetime.now(timezone.utc)
+    today = now.date()
+    start_dt = datetime.combine(today - timedelta(days=6), datetime.min.time(), tzinfo=timezone.utc)
+    try:
+        with _SessionLocal() as session:
+            created_rows = session.scalars(
+                select(GenerationHistory.created_at).where(GenerationHistory.created_at >= start_dt),
+            ).all()
+        by_day: dict[date, int] = {}
+        for ca in created_rows:
+            if ca is None:
+                continue
+            d = ca.date()
+            by_day[d] = by_day.get(d, 0) + 1
+        gen_by_day: list[dict[str, Any]] = []
+        for i in range(7):
+            d = today - timedelta(days=6 - i)
+            gen_by_day.append(
+                {
+                    "label": f"{d.month}/{d.day}",
+                    "count": int(by_day.get(d, 0)),
+                },
+            )
+        max_daily = max((x["count"] for x in gen_by_day), default=0)
+        bar_max = max(max_daily, 1)
+        with _SessionLocal() as session:
+            n_docx = int(
+                session.scalar(
+                    select(func.count())
+                    .select_from(GenerationHistory)
+                    .where(GenerationHistory.result["output_kind"].astext == "docx"),
+                )
+                or 0,
+            )
+            n_total = int(session.scalar(select(func.count()).select_from(GenerationHistory)) or 0)
+        n_pptx = max(0, n_total - n_docx)
+        return {
+            "gen_by_day": gen_by_day,
+            "output_pptx": n_pptx,
+            "output_docx": n_docx,
+            "bar_max": bar_max,
+        }
+    except Exception:
+        log.exception("读取概览图表数据失败")
+        return empty
+
+
 def list_presentation_summaries(limit: int = 500) -> list[dict[str, object]]:
     """列表用摘要（不含 payload）；按创建时间倒序。"""
     if not _SessionLocal:
@@ -629,6 +713,7 @@ def list_presentation_summaries(limit: int = 500) -> list[dict[str, object]]:
     for r in rows:
         created = r.created_at
         pl = r.payload if isinstance(r.payload, dict) else {}
+        tk = str(pl.get("template_kind") or "").strip() or "ppt_parsed"
         out.append(
             {
                 "task_id": r.task_id,
@@ -636,6 +721,7 @@ def list_presentation_summaries(limit: int = 500) -> list[dict[str, object]]:
                 "slide_count": int(r.slide_count or 0),
                 "created_at": created.isoformat() if created else None,
                 "parse_impl": _parse_impl_label_from_payload(pl),
+                "template_kind": tk,
             },
         )
     return out
@@ -834,6 +920,7 @@ def _template_record(tpl: ChapterTemplate, chapters: list[ChapterTemplateChapter
     ]
     return {
         "id": tpl.id,
+        "templateCode": _norm_str(tpl.template_code, 64),
         "name": _norm_str(tpl.name),
         "description": _norm_str(tpl.description),
         "chapters": ch_rows,
@@ -841,6 +928,33 @@ def _template_record(tpl: ChapterTemplate, chapters: list[ChapterTemplateChapter
         "createdAt": tpl.created_at.isoformat() if tpl.created_at else "",
         "updatedAt": tpl.updated_at.isoformat() if tpl.updated_at else "",
     }
+
+
+def _ensure_word_table_fill_template(session) -> None:
+    existing = session.scalar(
+        select(ChapterTemplate).where(ChapterTemplate.template_code == WORD_TABLE_FILL_TEMPLATE_CODE),
+    )
+    if existing:
+        return
+    tpl = ChapterTemplate(
+        id=str(uuid4()),
+        template_code=WORD_TABLE_FILL_TEMPLATE_CODE,
+        name="Word 表格回填",
+        description="特殊报告类型：仅用于 Word 模板表格回填，不参与 PPT 章节解析。",
+        is_active=True,
+    )
+    session.add(tpl)
+    session.flush()
+    session.add(
+        ChapterTemplateChapter(
+            id=str(uuid4()),
+            template_id=tpl.id,
+            title="Word 表格",
+            hint="仅用于触发 Word 生成模式。",
+            sort_order=1,
+        ),
+    )
+    session.commit()
 
 
 def list_chapter_templates(query: str = "", limit: int = 500) -> list[dict[str, object]]:
@@ -872,6 +986,7 @@ def list_chapter_templates(query: str = "", limit: int = 500) -> list[dict[str, 
             out.append(
                 {
                     "id": tpl.id,
+                    "templateCode": _norm_str(tpl.template_code, 64),
                     "name": _norm_str(tpl.name),
                     "description": desc_preview,
                     "chapterCount": int(ch_count),
@@ -905,6 +1020,7 @@ def save_chapter_template(payload: dict[str, Any]) -> tuple[str, dict[str, objec
     name = _norm_str(data.get("name"), 128)
     description = _norm_str(data.get("description"))
     chapters = _normalize_template_chapters(data.get("chapters"))
+    word_fill_requested = bool(data.get("wordTableFill") or data.get("word_table_fill"))
     if not name:
         raise ValueError("请填写模板名称。")
     if not chapters:
@@ -914,12 +1030,30 @@ def save_chapter_template(payload: dict[str, Any]) -> tuple[str, dict[str, objec
         tpl = session.get(ChapterTemplate, template_id) if template_id else None
         if template_id and not tpl:
             raise KeyError("模板不存在。")
+        if tpl and word_fill_requested and tpl.template_code != WORD_TABLE_FILL_TEMPLATE_CODE:
+            raise ValueError("无法将已有报告类型切换为 Word 特殊类型；请新建报告类型并勾选「Word 表格回填」。")
         if not tpl:
-            tpl = ChapterTemplate(
-                id=str(uuid4()),
-                template_code=f"TPL_{uuid4().hex[:12].upper()}",
-                is_active=True,
-            )
+            if word_fill_requested:
+                dup = session.scalar(
+                    select(ChapterTemplate).where(
+                        ChapterTemplate.template_code == WORD_TABLE_FILL_TEMPLATE_CODE,
+                    ),
+                )
+                if dup:
+                    raise ValueError(
+                        "已存在编码为 word_table_fill 的 Word 表格回填类型，请在列表中编辑该条，勿重复创建。",
+                    )
+                tpl = ChapterTemplate(
+                    id=str(uuid4()),
+                    template_code=WORD_TABLE_FILL_TEMPLATE_CODE,
+                    is_active=True,
+                )
+            else:
+                tpl = ChapterTemplate(
+                    id=str(uuid4()),
+                    template_code=f"TPL_{uuid4().hex[:12].upper()}",
+                    is_active=True,
+                )
             session.add(tpl)
 
         tpl.name = name

@@ -1,5 +1,5 @@
 /**
- * 章节模板存储层（后端 API 版）
+ * 报告类型存储层（后端 API 版）
  */
 (function (global) {
   var API_BASE = "/api/chapter-templates";
@@ -33,6 +33,7 @@
       id: norm(t.id),
       name: norm(t.name),
       description: norm(t.description),
+      templateCode: norm(t.templateCode),
       chapters: rows,
       chapterCount: rows.length,
       createdAt: norm(t.createdAt),
@@ -63,6 +64,7 @@
           id: norm(it.id),
           name: norm(it.name),
           description: norm(it.description),
+          templateCode: norm(it.templateCode || ""),
           chapterCount: Number(it.chapterCount || 0),
           updatedAt: norm(it.updatedAt),
         };
@@ -83,15 +85,24 @@
 
     save: async function (tpl) {
       var t = normalizeTemplate(tpl);
-      if (!t.name) throw new Error("请填写模板名称。");
+      if (!t.name) throw new Error("请填写报告类型名称。");
       if (!t.chapters.length) throw new Error("至少保留一个章节。");
       var isUpdate = !!t.id;
+      var payload = {
+        id: t.id,
+        name: t.name,
+        description: t.description,
+        chapters: t.chapters,
+      };
+      if (!isUpdate && tpl && tpl.wordTableFill) {
+        payload.wordTableFill = true;
+      }
       var data = await requestJson(
         isUpdate ? API_BASE + "/" + encodeURIComponent(t.id) : API_BASE,
         {
           method: isUpdate ? "PUT" : "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(t),
+          body: JSON.stringify(payload),
         },
       );
       return norm(data.id || (data.item && data.item.id));
@@ -105,7 +116,7 @@
 
     removeChapter: async function (templateId, chapterId) {
       var tpl = await this.get(templateId);
-      if (!tpl) throw new Error("模板不存在。");
+      if (!tpl) throw new Error("报告类型不存在。");
       tpl.chapters = (tpl.chapters || []).filter(function (ch) { return ch.id !== chapterId; });
       if (!tpl.chapters.length) throw new Error("至少保留一个章节。");
       tpl.chapters.forEach(function (ch, i) { ch.sort = i; });

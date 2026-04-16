@@ -48,7 +48,7 @@
 
   async function renamePresentation(taskId, currentName) {
     var msg = window.prompt(
-      "修改为显示名称（仅保存到数据库，用于列表与导出提示；不会重命名服务器上的 .pptx 文件）：",
+      "修改为显示名称（仅保存到数据库，用于列表与导出提示；不会重命名服务器上的 .pptx/.docx 文件）：",
       currentName || "",
     );
     if (msg === null) return;
@@ -75,7 +75,13 @@
 
   async function deletePresentation(taskId, displayName) {
     var label = displayName || taskId;
-    if (!window.confirm("确定删除模板「" + label + "」吗？将同时删除解析记录、服务器上的 .pptx 及该任务的参考截图，且不可恢复。")) {
+    if (
+      !window.confirm(
+        "确定删除模板「" +
+          label +
+          "」吗？将同时删除解析记录、服务器上的 .pptx/.docx 及该任务的参考截图，且不可恢复。",
+      )
+    ) {
       return;
     }
     try {
@@ -101,7 +107,14 @@
       input.value = "";
       if (!f || !taskId) return;
       var lower = (f.name || "").toLowerCase();
-      if (!lower.endsWith(".pptx")) {
+      var tk = (input.dataset.replaceTemplateKind || "").trim();
+      var isWordTpl = tk.indexOf("word_") === 0;
+      if (isWordTpl) {
+        if (!lower.endsWith(".docx")) {
+          window.alert("该条目为 Word 模板，请仅选择 .docx 文件。");
+          return;
+        }
+      } else if (!lower.endsWith(".pptx")) {
         window.alert("请仅选择 .pptx 文件。");
         return;
       }
@@ -110,7 +123,10 @@
       var empty = document.getElementById("presentation-list-empty");
       if (loading) {
         loading.hidden = false;
-        loading.textContent = "正在上传并重新解析（替换模板文件）…";
+        loading.textContent =
+          isWordTpl
+            ? "正在上传并替换 Word 文档…"
+            : "正在上传并重新解析（替换模板文件）…";
       }
       if (wrap) wrap.hidden = true;
       if (empty) empty.hidden = true;
@@ -128,7 +144,10 @@
         var flash = document.getElementById("parse-flash");
         if (flash) {
           flash.hidden = false;
-          flash.textContent = "已用新文件替换并重新解析：「" + (f.name || "") + "」。";
+          flash.textContent =
+            isWordTpl
+              ? "已用新 Word 文档替换：「" + (f.name || "") + "」。"
+              : "已用新文件替换并重新解析：「" + (f.name || "") + "」。";
         }
       } catch (e) {
         window.alert(e.message || String(e));
@@ -137,11 +156,20 @@
     });
   }
 
-  function startReplacePresentation(taskId) {
+  function startReplacePresentation(taskId, templateKind) {
     bindReplaceFileInput();
     var input = document.getElementById("presentation-replace-file");
     if (!input) return;
     input.dataset.replaceTaskId = taskId;
+    input.dataset.replaceTemplateKind = templateKind || "";
+    if (String(templateKind || "").indexOf("word_") === 0) {
+      input.setAttribute("accept", ".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document");
+    } else {
+      input.setAttribute(
+        "accept",
+        ".pptx,application/vnd.openxmlformats-officedocument.presentationml.presentation",
+      );
+    }
     input.click();
   }
 
@@ -175,6 +203,7 @@
       it.file_name,
       it.parse_impl,
       it.task_id,
+      it.template_kind,
       String(it.slide_count != null ? it.slide_count : ""),
       formatTime(it.created_at),
     ]
@@ -213,7 +242,7 @@
           empty.textContent =
             "没有与「" + filterCtx.searchRaw + "」匹配的模板，请尝试调整关键词或多词用空格分隔。";
         } else {
-          empty.textContent = "暂无记录，请先上传并解析一份 PPT。";
+          empty.textContent = "暂无记录，请先上传 PPT 或 Word 并解析。";
         }
       }
       return;
@@ -226,6 +255,7 @@
         var rawName = it.file_name || "";
         var impl = (it.parse_impl || "—").replace(/</g, "&lt;");
         var tid = it.task_id || "";
+        var tk = (it.template_kind || "").replace(/</g, "&lt;");
         return (
           "<tr>" +
           "<td>" +
@@ -247,6 +277,8 @@
           '">改名</button> · ' +
           '<button type="button" class="link-button presentation-replace-btn" data-presentation-replace="' +
           escapeAttr(tid) +
+          '" data-template-kind="' +
+          escapeAttr(tk) +
           '">替换</button> · ' +
           '<button type="button" class="link-button presentation-delete-btn" data-presentation-delete="' +
           escapeAttr(tid) +
@@ -272,7 +304,8 @@
     wrap.querySelectorAll(".presentation-replace-btn").forEach(function (btn) {
       btn.addEventListener("click", function () {
         var tid = (btn.getAttribute("data-presentation-replace") || "").trim();
-        if (tid) startReplacePresentation(tid);
+        var tk = (btn.getAttribute("data-template-kind") || "").trim();
+        if (tid) startReplacePresentation(tid, tk);
       });
     });
     wrap.querySelectorAll(".presentation-delete-btn").forEach(function (btn) {

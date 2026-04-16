@@ -8,7 +8,7 @@ from flask import Blueprint, redirect, render_template, request, url_for
 from ppt_report import config
 from ppt_report.models import db as db_mod
 from ppt_report.services.page_types import compute_chapter_selection_groups, demo_chapter_selection_groups
-from ppt_report.services.presentation_cache import get_parsed_from_cache
+from ppt_report.services.presentation_cache import get_parsed_from_cache, is_word_stored_payload
 
 web_bp = Blueprint("web", __name__)
 
@@ -49,11 +49,13 @@ def presentation_detail(task_id: str):
             ),
             404,
         )
+    is_word = is_word_stored_payload(parsed if isinstance(parsed, dict) else None)
     return render_template(
         "pages/presentation_detail.html",
         task_id=tid,
         parsed=parsed,
         parsed_json=json.dumps(parsed, ensure_ascii=False, indent=2),
+        is_word_stored=is_word,
         max_upload_mb=config.MAX_UPLOAD_MB,
         generation_hard_length_cap=config.GENERATION_HARD_LENGTH_CAP,
     )
@@ -62,25 +64,37 @@ def presentation_detail(task_id: str):
 @web_bp.get("/partials/generate-form")
 def partial_generate_form():
     tid = (request.args.get("task_id") or "").strip()
+    gen_mode = (request.args.get("gen") or "ppt").strip().lower()
     if not tid:
+        if gen_mode == "word":
+            return render_template(
+                "partials/ppt/_generate_panel.html",
+                task_id="",
+                chapter_groups=[],
+                topic="",
+                is_word_template=True,
+            )
         return render_template(
             "partials/ppt/_generate_panel.html",
             task_id="",
             chapter_groups=demo_chapter_selection_groups(),
             topic="",
+            is_word_template=False,
         )
     parsed = get_parsed_from_cache(tid)
     if not parsed:
         return (
             '<p class="error">未找到该解析记录，或会话已过期。'
-            "请在 PPT模板管理 页确认列表中仍有该条目，或重新解析。</p>"
+            "请在文档模板管理页确认列表中仍有该条目，或重新解析。</p>"
         ), 404
-    chapter_groups = compute_chapter_selection_groups(parsed)
+    is_word_template = is_word_stored_payload(parsed if isinstance(parsed, dict) else None)
+    chapter_groups = [] if is_word_template else compute_chapter_selection_groups(parsed)
     return render_template(
         "partials/ppt/_generate_panel.html",
         task_id=tid,
         chapter_groups=chapter_groups,
         topic="",
+        is_word_template=is_word_template,
     )
 
 
@@ -88,12 +102,14 @@ def partial_generate_form():
 def overview():
     stats = db_mod.get_overview_stats()
     recent: list[dict[str, object]] = []
+    chart_data: dict[str, object] = db_mod.get_overview_chart_data()
     if stats.get("db_enabled"):
         recent = db_mod.list_generation_history_summaries(limit=8)
     return render_template(
         "pages/overview.html",
         max_upload_mb=config.MAX_UPLOAD_MB,
         overview=stats,
+        chart_data=chart_data,
         recent_generations=recent,
     )
 

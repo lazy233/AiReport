@@ -5,16 +5,34 @@
   <div class="card generate-workspace-card">
     <h2>AI 报告内容生成</h2>
 
-    <div class="generate-flow-strip" aria-hidden="true">
-      <span class="generate-flow-item is-done">解析模板</span>
-      <span class="generate-flow-arrow">→</span>
-      <span class="generate-flow-item is-active">选择并配置</span>
-      <span class="generate-flow-arrow">→</span>
-      <span class="generate-flow-item">生成下载</span>
+    <div class="generate-workspace-tabs" role="tablist" aria-label="生成方式">
+      <button
+        type="button"
+        class="generate-workspace-tab is-active"
+        role="tab"
+        id="gen-workspace-tab-ppt"
+        aria-selected="true"
+        aria-controls="generate-template-section"
+        data-gen-workspace="ppt"
+      >
+        PPT 生成
+      </button>
+      <button
+        type="button"
+        class="generate-workspace-tab"
+        role="tab"
+        id="gen-workspace-tab-word"
+        aria-selected="false"
+        aria-controls="generate-template-section"
+        data-gen-workspace="word"
+      >
+        Word 生成
+      </button>
     </div>
 
-    <div class="generate-template-section">
-      <h3 class="generate-section-title">1. 选择 PPT 与章节引用</h3>
+    <div class="generate-template-section" id="generate-template-section">
+      <h3 class="generate-section-title" data-gen-workspace-panel="ppt">1. 选择 PPT 模板与章节引用</h3>
+      <h3 class="generate-section-title" data-gen-workspace-panel="word" hidden>1. 选择 Word 模板与数据</h3>
       {% if not db_enabled %}
         <p class="error">未连接 PostgreSQL（请检查 DATABASE_URL 与数据库服务），无法列出已解析模板。</p>
       {% endif %}
@@ -24,20 +42,25 @@
             <div class="generate-ref-block generate-ref-block--pick">
               <span class="generate-ref-block-label" id="gen-ref-label-chapter">报告类型</span>
               <p class="muted gen-ref-inline-placeholder" id="gen-ref-chapter-placeholder">
-                请先在下方选择已解析的成品报告，加载后即可点按钮选择报告类型。
+                <span data-gen-workspace-panel="ppt">请先在下方选择已解析的 PPT 成品，加载后即可点按钮选择报告类型。</span>
+                <span data-gen-workspace-panel="word" hidden>请先在下方选择已解析的 Word 模板，加载后即可选择「Word 表格回填」报告类型。</span>
               </p>
               <div id="gen-ref-mount-chapter" class="gen-ref-mount gen-ref-mount--inline"></div>
             </div>
             <div class="generate-ref-block generate-ref-block--pick">
               <span class="generate-ref-block-label" id="gen-ref-label-student">学生数据</span>
               <p class="muted gen-ref-inline-placeholder" id="gen-ref-student-placeholder">
-                请先在下方选择已解析的成品报告，加载后即可点按钮选择学生数据。
+                <span data-gen-workspace-panel="ppt">请先在下方选择已解析的 PPT 成品，加载后即可点按钮选择学生数据。</span>
+                <span data-gen-workspace-panel="word" hidden>选择 Word 模板并加载表单后，可点按钮选择学生数据。</span>
               </p>
               <div id="gen-ref-mount-student" class="gen-ref-mount gen-ref-mount--inline"></div>
             </div>
           </div>
           <div class="generate-ref-block generate-ref-block--ppt">
-            <label class="generate-ref-block-label" for="generate-task-select">【选择ppt模板】</label>
+            <label class="generate-ref-block-label" for="generate-task-select" id="generate-task-select-label">
+              <span data-gen-workspace-panel="ppt">【选择 PPT 模板】</span>
+              <span data-gen-workspace-panel="word" hidden>【选择 Word 模板】</span>
+            </label>
             <select id="generate-task-select" class="select-inline generate-task-select">
               <option value="">— 请选择 —</option>
             </select>

@@ -8,6 +8,7 @@ import threading
 import time
 import uuid
 from pathlib import Path
+from typing import Any
 
 from ppt_report import config
 from ppt_report import state
@@ -18,6 +19,8 @@ from ppt_report.services.chapter_ref_images import is_safe_task_id
 from ppt_report.services.page_types import classify_page_types_with_bailian
 from ppt_report.services.presentation_cache import get_parsed_from_cache, save_parsed_to_cache
 from ppt_report.services.pptx_document import parse_pptx
+from ppt_report.services.word_document import parse_docx
+from ppt_report.services.word_generation import fill_word_table_for_student
 from ppt_report.services.filled_export_cache import save_filled_export
 from ppt_report.services.text_generation import generate_text_orchestrated
 
@@ -127,6 +130,79 @@ def _parse_job_worker(
             status="done",
             phase="done",
             message="解析完成，正在跳转…",
+            task_id=out_task_id,
+        )
+    except Exception as exc:  # noqa: BLE001
+        if temp_path.exists():
+            try:
+                temp_path.unlink()
+            except OSError:
+                pass
+        _update_parse_job(
+            job_poll_id,
+            status="error",
+            phase="error",
+            error=str(exc),
+            message=str(exc),
+        )
+
+
+def _word_parse_worker(
+    job_poll_id: str,
+    temp_path: Path,
+    orig_filename: str,
+    replace_task_id: str | None = None,
+) -> None:
+    """上传 .docx：解析文档结构后写入 parsed_presentations。"""
+    try:
+        if not temp_path.is_file():
+            raise RuntimeError("上传临时文件丢失，请重新上传。")
+        rid = (replace_task_id or "").strip() or None
+        if rid:
+            if not is_safe_task_id(rid):
+                raise RuntimeError("无效的替换目标 ID。")
+            prev = get_parsed_from_cache(rid)
+            if not prev or not isinstance(prev, dict):
+                raise RuntimeError("未找到要替换的模板记录，可能已删除。")
+            if str(prev.get("template_kind") or "").strip() not in ("word_stored", "word_parsed"):
+                raise RuntimeError("仅 Word 模板可替换为 Word 文档。")
+        _update_parse_job(
+            job_poll_id,
+            phase="parsing",
+            message="正在解析 Word 文档结构（标题/段落/表格）…",
+        )
+        parsed_doc = parse_docx(temp_path)
+        parsed: dict[str, Any] = {
+            "file_name": orig_filename,
+            "slide_count": 0,
+            "slides": [],
+            "template_kind": "word_parsed",
+            "stored_ext": "docx",
+            "section_count": int(parsed_doc.get("section_count") or 0),
+            "sections": parsed_doc.get("sections") if isinstance(parsed_doc.get("sections"), list) else [],
+        }
+        if rid:
+            out_task_id = rid
+            dest = config.UPLOAD_DIR / f"{out_task_id}.docx"
+            if dest.exists():
+                dest.unlink()
+            shutil.move(str(temp_path), str(dest))
+            state.PARSE_CACHE[out_task_id] = parsed
+        else:
+            out_task_id = save_parsed_to_cache(parsed)
+            dest = config.UPLOAD_DIR / f"{out_task_id}.docx"
+            if dest.exists():
+                dest.unlink()
+            shutil.move(str(temp_path), str(dest))
+        try:
+            db.persist_parsed_presentation(out_task_id, parsed)
+        except Exception as exc:  # noqa: BLE001
+            log.warning("Word 解析结果写入数据库失败: %s", exc)
+        _update_parse_job(
+            job_poll_id,
+            status="done",
+            phase="done",
+            message="Word 解析完成，正在跳转…",
             task_id=out_task_id,
         )
     except Exception as exc:  # noqa: BLE001
@@ -269,6 +345,76 @@ def _generate_job_worker(
         )
 
 
+def _generate_word_job_worker(
+    job_id: str,
+    task_id: str | None,
+    topic: str,
+    merged_extra: str,
+    selected_slides: list[int],
+    *,
+    student_data_id: str,
+) -> None:
+    del topic, merged_extra, selected_slides
+    try:
+        tid = (task_id or "").strip()
+        if not tid:
+            raise RuntimeError("缺少模板任务 ID。")
+        sid = (student_data_id or "").strip()
+        if not sid:
+            raise RuntimeError("请选择学生数据。")
+        _update_generate_job(
+            job_id,
+            batch_total=1,
+            batch_index=0,
+            message="正在回填 Word 表格…",
+        )
+        history_id: str | None = None
+        summary = fill_word_table_for_student(tid, sid)
+        result_payload = {
+            "output_kind": "docx",
+            "word_fill_summary": summary,
+        }
+        try:
+            history_id = db.persist_generation_history(
+                tid,
+                "Word 表格回填",
+                [],
+                "",
+                result_payload,
+            )
+        except Exception:  # noqa: BLE001
+            log.warning("Word 生成历史落库失败（任务仍视为成功）", exc_info=True)
+        if history_id:
+            from pathlib import Path
+            import shutil
+
+            src = Path(str(summary.get("download_path") or ""))
+            if src.is_file():
+                dst = config.FILLED_EXPORT_DIR / f"{history_id}.docx"
+                try:
+                    shutil.copyfile(str(src), str(dst))
+                except OSError:
+                    pass
+        done_kwargs: dict[str, object] = {
+            "status": "done",
+            "batch_index": 1,
+            "batch_total": 1,
+            "message": "Word 生成完成",
+            "result": result_payload,
+            "task_id": tid,
+        }
+        if history_id:
+            done_kwargs["history_id"] = history_id
+        _update_generate_job(job_id, **done_kwargs)
+    except Exception as exc:  # noqa: BLE001
+        _update_generate_job(
+            job_id,
+            status="error",
+            error=str(exc),
+            message=str(exc),
+        )
+
+
 def snapshot_generate_job(job_id: str) -> dict | None:
     with state.GENERATE_JOBS_LOCK:
         row = state.GENERATE_JOBS.get(job_id)
@@ -296,7 +442,9 @@ __all__ = [
     "_create_generate_job_record",
     "_create_parse_job_record",
     "_generate_job_worker",
+    "_generate_word_job_worker",
     "_parse_job_worker",
+    "_word_parse_worker",
     "snapshot_generate_job",
     "snapshot_parse_job",
 ]

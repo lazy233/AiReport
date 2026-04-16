@@ -1,12 +1,12 @@
 {% extends "layout/base.html" %}
-{% block title %}PPT模板管理{% endblock %}
+{% block title %}文档模板管理{% endblock %}
 
 {% block content %}
   {% include "partials/ppt/_upload_panel.html" %}
 
   <div class="card">
     <div class="section-head">
-      <h2 style="margin: 0;">已上传的 PPT</h2>
+      <h2 style="margin: 0;">已上传的模板</h2>
       <button type="button" class="button secondary" id="presentation-list-refresh">刷新列表</button>
     </div>
     <div class="presentation-list-toolbar">
@@ -27,8 +27,8 @@
       <p class="muted" id="parse-flash" style="margin: 0 0 12px; font-weight: 600; color: var(--primary-dark);" hidden></p>
       <p class="muted" id="presentation-list-loading">加载列表中…</p>
       <div id="presentation-list-table" class="table-scroll" hidden></div>
-      <p class="muted" id="presentation-list-empty" hidden>暂无记录，请先上传并解析一份 PPT。</p>
-      <input type="file" id="presentation-replace-file" accept=".pptx,application/vnd.openxmlformats-officedocument.presentationml.presentation" hidden />
+      <p class="muted" id="presentation-list-empty" hidden>暂无记录，请先上传并解析一份文档（PPT 或 Word）。</p>
+      <input type="file" id="presentation-replace-file" accept=".pptx,.docx,application/vnd.openxmlformats-officedocument.presentationml.presentation,application/vnd.openxmlformats-officedocument.wordprocessingml.document" hidden />
     </div>
   </div>
 {% endblock %}

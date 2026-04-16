@@ -11,9 +11,43 @@
           });
         };
 
-  function renderGenerationResult(data, taskId) {
+  function renderGenerationResult(data, taskId, historyId) {
     var mount = document.getElementById("ai-result-mount");
-    if (!mount || !data || !data.slides) return;
+    if (!mount || !data) return;
+    if (data.output_kind === "docx") {
+      mount.innerHTML = "";
+      var wordCard = document.createElement("div");
+      wordCard.className = "card result-card";
+      wordCard.id = "ai-result";
+      var head = document.createElement("div");
+      head.className = "section-head";
+      head.innerHTML =
+        '<div><h2>Word 生成结果</h2><p class="muted">已按学生数据回填 Word 表格内容。</p></div>';
+      wordCard.appendChild(head);
+      var sum = data.word_fill_summary || {};
+      var stats = document.createElement("p");
+      stats.className = "muted";
+      stats.textContent =
+        "表格数：" +
+        (sum.table_count || 0) +
+        "，变更单元格：" +
+        (sum.touched_cells || 0) +
+        "，占位符命中：" +
+        (sum.placeholder_hits || 0);
+      wordCard.appendChild(stats);
+      if (historyId) {
+        var dl = document.createElement("p");
+        dl.style.marginTop = "10px";
+        dl.innerHTML =
+          '<a class="button" href="/api/generation_history/' +
+          encodeURIComponent(historyId) +
+          '/download">下载回填后的 Word</a>';
+        wordCard.appendChild(dl);
+      }
+      mount.appendChild(wordCard);
+      return;
+    }
+    if (!data.slides) return;
     mount.innerHTML = "";
     var card = document.createElement("div");
     card.className = "card result-card";
@@ -334,7 +368,7 @@
         applyStatusToBar(s);
         if (s.status === "done") {
           setGenUiRunning(false);
-          renderGenerationResult(s.result, s.task_id);
+          renderGenerationResult(s.result, s.task_id, s.history_id || "");
           var target = document.getElementById("ai-result");
           if (target) target.scrollIntoView({ behavior: "smooth", block: "start" });
           break;

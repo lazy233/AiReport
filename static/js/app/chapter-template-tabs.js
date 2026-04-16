@@ -39,7 +39,7 @@
       if (!ch) return;
       var msg = isEditor
         ? "确定删除章节「" + (ch.title || "") + "」吗？"
-        : "确定从模板中删除章节「" + (ch.title || "") + "」吗？删除后将立即保存。";
+        : "确定从报告类型中删除章节「" + (ch.title || "") + "」吗？删除后将立即保存。";
       if (!confirm(msg)) return;
       draft.chapters.splice(index, 1);
       draft.chapters.forEach(function (c, i) { c.sort = i; });
@@ -194,8 +194,10 @@
         saveBtn.addEventListener("click", async function () {
           var n = document.getElementById("ct-meta-name");
           var d = document.getElementById("ct-meta-desc");
+          var wf = document.getElementById("ct-word-table-fill");
           draft.name = n ? n.value.trim() : "";
           draft.description = d ? d.value.trim() : "";
+          draft.wordTableFill = !!(wf && wf.checked && !wf.disabled);
           try {
             var id = await ChapterTemplatesStore.save(JSON.parse(JSON.stringify(draft)));
             window.location.href = "/chapter-templates/" + encodeURIComponent(id);

@@ -1,30 +1,50 @@
 {% extends "layout/base.html" %}
-{% block title %}{% if page_mode == 'new' %}新建章节模板{% else %}编辑章节模板{% endif %}{% endblock %}
+{% block title %}{% if page_mode == 'new' %}新建报告类型{% else %}编辑报告类型{% endif %}{% endblock %}
 
 {% block content %}
   <div class="breadcrumb">
-    <a href="{{ url_for('web.chapter_templates_list') }}">章节模板管理</a>
+    <a href="{{ url_for('web.chapter_templates_list') }}">报告类型管理</a>
     <span class="breadcrumb-sep">/</span>
     <span>{% if page_mode == 'new' %}新建{% else %}编辑{% endif %}</span>
   </div>
 
   <div id="ct-editor-not-found" class="card error" hidden>
-    <p>未找到该模板。</p>
+    <p>未找到该报告类型。</p>
     <p><a class="button" href="{{ url_for('web.chapter_templates_list') }}">返回列表</a></p>
   </div>
 
   <div id="ct-editor-found" hidden>
     <div class="card">
-      <h2 style="margin-top: 0;">{% if page_mode == 'new' %}新建模板{% else %}编辑模板{% endif %}</h2>
-      <p class="muted">填写模板信息与各章节约束；底部「保存」后进入详情页。</p>
+      <h2 style="margin-top: 0;">{% if page_mode == 'new' %}新建报告类型{% else %}编辑报告类型{% endif %}</h2>
+      <p class="muted">填写报告类型信息与各章节约束；底部「保存」后进入详情页。</p>
       <div class="ct-field">
-        <label for="ct-meta-name">模板名称</label>
+        <label for="ct-meta-name">报告类型名称</label>
         <input type="text" id="ct-meta-name" class="ct-input" placeholder="例如：学期总结汇报" />
       </div>
       <div class="ct-field">
-        <label for="ct-meta-desc">模板说明（可选）</label>
+        <label for="ct-meta-desc">说明（可选）</label>
         <textarea id="ct-meta-desc" class="ct-textarea" rows="2" placeholder="适用场景简述"></textarea>
       </div>
+      {% if page_mode == 'new' %}
+      <div class="ct-field ct-field--word-special">
+        <label class="ct-checkbox-label" for="ct-word-table-fill">
+          <input type="checkbox" id="ct-word-table-fill" />
+          <span>创建为 Word 表格回填（特殊报告类型）</span>
+        </label>
+        <p class="muted ct-field-hint" id="ct-word-special-hint" hidden>
+          系统中已有编码为 <code>word_table_fill</code> 的类型，请直接编辑该条；无需重复创建。
+        </p>
+        <p class="muted ct-field-hint" id="ct-word-special-lead">
+          勾选后固定编码 <code>word_table_fill</code>，供 Word 生成页使用；与 PPT 章节解析无关。若已存在同编码则无法再次创建。
+        </p>
+      </div>
+      {% else %}
+      <div id="ct-word-special-badge" class="ct-field" hidden>
+        <p class="muted" style="margin: 0;">
+          当前为 <strong>Word 表格回填</strong> 特殊类型（编码 <code>word_table_fill</code>），用于 Word 生成流程。
+        </p>
+      </div>
+      {% endif %}
     </div>
 
     <div class="card">
@@ -35,7 +55,7 @@
         <div id="ct-tab-panel" class="ct-tab-panel ct-tab-panel-box" role="tabpanel"></div>
       </div>
       <div style="margin-top: 20px;">
-        <button type="button" class="button" id="ct-editor-save">保存模板</button>
+        <button type="button" class="button" id="ct-editor-save">保存</button>
         <a class="button secondary" href="{{ url_for('web.chapter_templates_list') }}" style="margin-left: 10px;">取消</a>
       </div>
     </div>
@@ -56,6 +76,22 @@
         if (pageMode === "new") {
           draft = ChapterTemplatesStore.newEmpty();
           fd.hidden = false;
+          try {
+            var items = await ChapterTemplatesStore.list("");
+            var hasWord = items.some(function (it) {
+              return (it.templateCode || "") === "word_table_fill";
+            });
+            var cb = document.getElementById("ct-word-table-fill");
+            var hintDup = document.getElementById("ct-word-special-hint");
+            var lead = document.getElementById("ct-word-special-lead");
+            if (cb && hasWord) {
+              cb.disabled = true;
+              if (hintDup) hintDup.hidden = false;
+              if (lead) lead.hidden = true;
+            }
+          } catch (e) {
+            /* 列表失败时不阻塞编辑 */
+          }
         } else {
           draft = await ChapterTemplatesStore.get(templateId);
           if (!draft) {
@@ -63,6 +99,10 @@
             return;
           }
           fd.hidden = false;
+          if ((draft.templateCode || "") === "word_table_fill") {
+            var badge = document.getElementById("ct-word-special-badge");
+            if (badge) badge.hidden = false;
+          }
         }
         var root = document.getElementById("ct-tabs-root");
         ChapterTemplateTabs.mount(root, { mode: "editor", initialDraft: draft });

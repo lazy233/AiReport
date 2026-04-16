@@ -78,45 +78,32 @@
     cleanupByDays: cleanupRemote,
 
     /**
-     * 历史下载：优先缓存成品，不存在则服务端回退导出
+     * 历史下载：优先缓存成品，不存在则服务端回退导出。
+     * 使用同源直链触发浏览器原生下载（可走系统/Chrome 下载进度），不再 fetch 整包进内存。
+     * 若服务端返回 JSON 错误体，浏览器可能下载为小文件；列表/详情页在点击前已能确认记录存在。
      * @param {string} recordId
      * @returns {Promise<void>}
      */
-    downloadHistoryPptxById: async function (recordId) {
-      if (!recordId) throw new Error("缺少历史记录 ID。");
-      var res = await fetch("/api/generation_history/" + encodeURIComponent(recordId) + "/download");
-      if (!res.ok) {
-        var errText = "";
-        try {
-          var j = await res.json();
-          errText = j.error || "";
-        } catch (e) {
-          errText = await res.text();
-        }
-        throw new Error(errText || "历史下载失败（" + res.status + "）");
+    downloadHistoryById: function (recordId) {
+      if (!recordId) {
+        return Promise.reject(new Error("缺少历史记录 ID。"));
       }
-      var blob = await res.blob();
-      var cd = res.headers.get("Content-Disposition") || "";
-      var name = "history_filled.pptx";
-      var m = /filename\*?=(?:UTF-8'')?["']?([^\"';]+)/i.exec(cd);
-      if (m) {
-        try {
-          name = decodeURIComponent(m[1].trim());
-        } catch (e) {
-          name = m[1].trim();
-        }
-      }
-      var url = URL.createObjectURL(blob);
+      var url = "/api/generation_history/" + encodeURIComponent(recordId) + "/download";
       var a = document.createElement("a");
       a.href = url;
-      a.download = name;
+      a.rel = "noopener";
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
-      URL.revokeObjectURL(url);
+      return Promise.resolve();
+    },
+    // backward compatibility
+    downloadHistoryPptxById: async function (recordId) {
+      return Store.downloadHistoryById(recordId);
     },
 
     /**
+     * 按任务与内存结果导出（POST /api/export），仍需 fetch + Blob；若需原生下载需后端提供 GET 导出或表单 POST。
      * @param {{ taskId: string, result: object }} rec
      * @returns {Promise<void>}
      */
