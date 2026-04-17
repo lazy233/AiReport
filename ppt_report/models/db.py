@@ -1027,9 +1027,25 @@ def save_student_record(payload: dict[str, Any]) -> tuple[str, dict[str, object]
         student.planner_teacher = _pick_profile(profile, "basic", "plannerTeacher", 64)
         student.advisor_teacher = _pick_profile(profile, "basic", "advisorTeacher", 64)
 
-        rec = existing or StudentTermProfile()
+        term_code_val = _pick_profile(profile, "basic", "currentTerm", 32)
+        rec: StudentTermProfile
+        if existing:
+            rec = existing
+        else:
+            dup = session.execute(
+                select(StudentTermProfile).where(
+                    StudentTermProfile.student_id == student.id,
+                    StudentTermProfile.term_code == term_code_val,
+                ),
+            ).scalar_one_or_none()
+            if dup is not None:
+                # 同一学生、同一学期已有一条快照：前端「新建」未带 id 时仍应更新该行，避免违反 uq_student_term_profiles_student_term
+                rec = dup
+                existing = dup
+            else:
+                rec = StudentTermProfile()
         rec.student_id = student.id
-        rec.term_code = _pick_profile(profile, "basic", "currentTerm", 32)
+        rec.term_code = term_code_val
         rec.grade_level = _pick_profile(profile, "basic", "gradeLevel", 64)
         rec.grade_intake = _pick_profile(profile, "basic", "gradeIntake", 128)
         rec.school = _pick_profile(profile, "basic", "school", 256)
