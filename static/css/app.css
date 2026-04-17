@@ -1174,6 +1174,173 @@ pre {
   box-sizing: border-box;
 }
 
+/* 模板选择：与「报告类型 / 学生数据」一致的字段式控件 */
+.gen-task-select-native {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.gen-task-picker {
+  position: relative;
+  margin-top: 2px;
+}
+
+.gen-task-picker-trigger {
+  width: 100%;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 14px;
+  font: inherit;
+  font-weight: 600;
+  font-size: 14px;
+  line-height: 1.35;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  background: var(--card);
+  color: var(--text);
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.05);
+  text-align: left;
+  cursor: pointer;
+  transition:
+    background 0.15s ease,
+    border-color 0.15s ease,
+    box-shadow 0.15s ease;
+}
+
+.gen-task-picker-trigger:hover {
+  background: #f8fafc;
+  border-color: var(--line-strong);
+}
+
+.gen-task-picker-trigger:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
+.gen-task-picker-lead {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  flex: 1;
+}
+
+.gen-task-picker-icon {
+  flex-shrink: 0;
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.gen-task-picker-icon svg {
+  width: 22px;
+  height: 22px;
+}
+
+.gen-task-picker-icon--ppt {
+  background: rgba(37, 99, 235, 0.1);
+  color: var(--primary-dark);
+}
+
+.gen-task-picker-icon--word {
+  background: rgba(14, 165, 233, 0.12);
+  color: #0369a1;
+}
+
+.gen-task-picker-value {
+  flex: 1;
+  min-width: 0;
+  font-weight: 600;
+  word-break: break-word;
+}
+
+.gen-task-picker-value.is-placeholder {
+  color: var(--subtle);
+  font-weight: 500;
+}
+
+.gen-task-picker-chevron {
+  flex-shrink: 0;
+  width: 22px;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--subtle);
+  transition: transform 0.2s ease;
+}
+
+.gen-task-picker-chevron svg {
+  width: 18px;
+  height: 18px;
+}
+
+.gen-task-picker--open .gen-task-picker-chevron {
+  transform: rotate(180deg);
+}
+
+.gen-task-picker-dropdown {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: calc(100% + 6px);
+  z-index: 40;
+  max-height: min(320px, 70vh);
+  overflow-y: auto;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  background: var(--card);
+  box-shadow: 0 10px 40px rgba(15, 23, 42, 0.12);
+}
+
+.gen-task-picker-menu {
+  list-style: none;
+  margin: 0;
+  padding: 6px;
+}
+
+.gen-task-picker-option {
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.4;
+  cursor: pointer;
+  color: var(--text);
+  transition: background 0.12s ease;
+}
+
+.gen-task-picker-option:hover,
+.gen-task-picker-option:focus-visible {
+  background: #f1f5f9;
+  outline: none;
+}
+
+.gen-task-picker-option[aria-selected="true"] {
+  background: rgba(37, 99, 235, 0.08);
+  font-weight: 600;
+  color: var(--primary-dark);
+}
+
+.gen-task-picker-option--placeholder {
+  color: var(--subtle);
+  font-weight: 500;
+}
+
 .generate-ref-block--ppt {
   padding-top: 12px;
   margin-top: 12px;

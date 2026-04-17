@@ -57,13 +57,50 @@
             </div>
           </div>
           <div class="generate-ref-block generate-ref-block--ppt">
-            <label class="generate-ref-block-label" for="generate-task-select" id="generate-task-select-label">
-              <span data-gen-workspace-panel="ppt">【选择 PPT 模板】</span>
-              <span data-gen-workspace-panel="word" hidden>【选择 Word 模板】</span>
-            </label>
-            <select id="generate-task-select" class="select-inline generate-task-select">
-              <option value="">— 请选择 —</option>
-            </select>
+            <span class="generate-ref-block-label" id="generate-task-select-label">
+              <span data-gen-workspace-panel="ppt">选择 PPT 模板</span>
+              <span data-gen-workspace-panel="word" hidden>选择 Word 模板</span>
+            </span>
+            <div class="gen-task-picker" id="generate-task-picker-wrap">
+              <button
+                type="button"
+                class="gen-task-picker-trigger"
+                id="generate-task-trigger"
+                aria-haspopup="listbox"
+                aria-expanded="false"
+                aria-labelledby="generate-task-select-label"
+              >
+                <span class="gen-task-picker-lead">
+                  <span class="gen-task-picker-icon gen-task-picker-icon--ppt" data-gen-workspace-panel="ppt" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                      <rect x="2" y="4" width="20" height="14" rx="2" />
+                      <path d="M8 21h8" />
+                      <path d="M12 17v4" />
+                      <path d="M7 10h.01M12 10h.01M17 10h.01" />
+                    </svg>
+                  </span>
+                  <span class="gen-task-picker-icon gen-task-picker-icon--word" data-gen-workspace-panel="word" hidden aria-hidden="true">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                      <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z" />
+                      <path d="M14 2v6h6" />
+                      <path d="M8 13h8M8 17h6" />
+                    </svg>
+                  </span>
+                  <span class="gen-task-picker-value" id="generate-task-display">— 请选择模板 —</span>
+                </span>
+                <span class="gen-task-picker-chevron" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M6 9l6 6 6-6" />
+                  </svg>
+                </span>
+              </button>
+              <div class="gen-task-picker-dropdown" id="generate-task-dropdown" hidden>
+                <ul class="gen-task-picker-menu" id="generate-task-menu" role="listbox" aria-labelledby="generate-task-select-label"></ul>
+              </div>
+              <select id="generate-task-select" class="gen-task-select-native" tabindex="-1" aria-hidden="true">
+                <option value="">— 请选择 —</option>
+              </select>
+            </div>
             <p class="error generate-task-picker-context" id="generate-context-error" hidden></p>
             <p class="muted generate-task-picker-context" id="generate-context-hint" hidden></p>
           </div>

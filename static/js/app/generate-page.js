@@ -76,6 +76,87 @@
     if (current && Array.from(sel.options).some(function (o) { return o.value === current; })) {
       sel.value = current;
     }
+    renderTaskPickerMenu(sel);
+    updateTaskPickerDisplay(sel);
+  }
+
+  function renderTaskPickerMenu(sel) {
+    var menu = document.getElementById("generate-task-menu");
+    if (!menu || !sel) return;
+    menu.innerHTML = "";
+    Array.from(sel.options).forEach(function (opt) {
+      var li = document.createElement("li");
+      li.setAttribute("role", "option");
+      li.setAttribute("data-value", opt.value);
+      li.className = "gen-task-picker-option";
+      if (!opt.value) li.classList.add("gen-task-picker-option--placeholder");
+      li.textContent = opt.textContent || "";
+      if (sel.value === opt.value) li.setAttribute("aria-selected", "true");
+      else li.setAttribute("aria-selected", "false");
+      li.addEventListener("mousedown", function (e) {
+        e.preventDefault();
+      });
+      li.addEventListener("click", function (e) {
+        e.stopPropagation();
+        sel.value = opt.value;
+        closeTaskPicker();
+        sel.dispatchEvent(new Event("change", { bubbles: true }));
+      });
+      menu.appendChild(li);
+    });
+  }
+
+  function updateTaskPickerDisplay(sel) {
+    var disp = document.getElementById("generate-task-display");
+    if (!disp || !sel) return;
+    var opt = sel.selectedOptions[0];
+    var t = opt && opt.value ? opt.textContent : "";
+    disp.textContent = t || "— 请选择模板 —";
+    disp.classList.toggle("is-placeholder", !t);
+  }
+
+  function closeTaskPicker() {
+    var dd = document.getElementById("generate-task-dropdown");
+    var tr = document.getElementById("generate-task-trigger");
+    var wrap = document.getElementById("generate-task-picker-wrap");
+    if (dd) dd.hidden = true;
+    if (tr) tr.setAttribute("aria-expanded", "false");
+    if (wrap) wrap.classList.remove("gen-task-picker--open");
+  }
+
+  function toggleTaskPicker() {
+    var dd = document.getElementById("generate-task-dropdown");
+    var tr = document.getElementById("generate-task-trigger");
+    var wrap = document.getElementById("generate-task-picker-wrap");
+    if (!dd || !tr) return;
+    var open = dd.hidden;
+    if (open) {
+      dd.hidden = false;
+      tr.setAttribute("aria-expanded", "true");
+      if (wrap) wrap.classList.add("gen-task-picker--open");
+    } else {
+      closeTaskPicker();
+    }
+  }
+
+  function bindTaskPickerUi() {
+    var tr = document.getElementById("generate-task-trigger");
+    if (!tr || tr._genTaskPickerBound) return;
+    tr._genTaskPickerBound = true;
+    tr.addEventListener("click", function (e) {
+      e.stopPropagation();
+      toggleTaskPicker();
+    });
+    if (!document._genTaskPickerDocBound) {
+      document._genTaskPickerDocBound = true;
+      document.addEventListener("click", function (e) {
+        var wrap = document.getElementById("generate-task-picker-wrap");
+        if (wrap && !wrap.contains(e.target)) closeTaskPicker();
+      });
+      document.addEventListener("keydown", function (e) {
+        if (e.key === "Escape") closeTaskPicker();
+      });
+    }
   }
 
   function refreshGenerateTaskOptions() {
@@ -272,6 +353,7 @@
 
     var sel = document.getElementById("generate-task-select");
     if (!sel) return;
+    bindTaskPickerUi();
 
     document.querySelectorAll("[data-gen-workspace]").forEach(function (btn) {
       btn.addEventListener("click", function () {
@@ -301,6 +383,8 @@
     loadGenerateForm((sel.value || "").trim());
 
     sel.addEventListener("change", function () {
+      updateTaskPickerDisplay(sel);
+      renderTaskPickerMenu(sel);
       var v = (sel.value || "").trim();
       setQueryParam("task_id", v);
       loadGenerateForm(v);
