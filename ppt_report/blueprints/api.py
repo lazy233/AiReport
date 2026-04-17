@@ -44,6 +44,7 @@ from ppt_report.services.presentation_cache import (
 )
 from ppt_report.services.pptx_document import apply_generation_to_presentation
 from ppt_report.services.student_guidance_ai import generate_student_guidance
+from ppt_report.services.student_import_ai import run_smart_import
 from ppt_report.services.filled_export_cache import resolve_filled_export_path
 from ppt_report.services.word_generation import fill_word_table_for_student
 from ppt_report.utils.files import allowed_file
@@ -137,6 +138,28 @@ def api_student_data_delete(record_id: str):
     if not ok:
         return jsonify({"ok": False, "error": "未找到该条学生数据。"}), 404
     return jsonify({"ok": True})
+
+
+@api_bp.post("/student-data/import-ai")
+def api_student_data_import_ai():
+    """上传 CSV / xlsx，由大模型将行映射为系统档案字段后逐条入库（服务端按批调用模型）。"""
+    if not db_mod.db_enabled():
+        return jsonify({"ok": False, "error": "数据库未启用。"}), 400
+    up = request.files.get("file")
+    if not up or not (up.filename or "").strip():
+        return jsonify({"ok": False, "error": "请选择要上传的 CSV 或 Excel 文件。"}), 400
+    raw = up.read()
+    if not raw:
+        return jsonify({"ok": False, "error": "文件为空。"}), 400
+    try:
+        result = run_smart_import(raw, up.filename)
+    except ValueError as exc:
+        return jsonify({"ok": False, "error": str(exc)}), 400
+    except RuntimeError as exc:
+        return jsonify({"ok": False, "error": str(exc)}), 400
+    except Exception:
+        return jsonify({"ok": False, "error": "智能导入处理失败，请稍后重试。"}), 500
+    return jsonify({"ok": True, **result})
 
 
 @api_bp.get("/chapter-templates")

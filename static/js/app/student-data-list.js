@@ -89,12 +89,6 @@
     el.innerHTML = html;
   }
 
-  function detectKind(file) {
-    var n = (file && file.name ? file.name : "").toLowerCase();
-    if (n.endsWith(".json")) return "json";
-    return "csv";
-  }
-
   function init() {
     var search = getQueryInput();
     var doSearch = document.getElementById("sd-search-btn");
@@ -116,46 +110,37 @@
         runSearch();
       });
 
-    var tplBtn = document.getElementById("sd-csv-template-btn");
-    if (tplBtn && window.StudentDataStore && typeof StudentDataStore.downloadImportTemplate === "function") {
-      tplBtn.addEventListener("click", function () {
-        try {
-          StudentDataStore.downloadImportTemplate();
-        } catch (e) {
-          window.alert(e.message || String(e));
-        }
-      });
-    }
-
-    var fileInput = document.getElementById("sd-bulk-file");
-    if (fileInput) {
+    var fileInput = document.getElementById("sd-import-ai-file");
+    if (fileInput && window.StudentDataStore && typeof StudentDataStore.importAiFile === "function") {
       fileInput.addEventListener("change", async function () {
         var f = fileInput.files && fileInput.files[0];
         if (!f) return;
-        var kind = detectKind(f);
-        var reader = new FileReader();
-        reader.onload = async function () {
-          try {
-            var text = String(reader.result || "");
-            var res = await StudentDataStore.importFromText(text, kind);
-            var parts = ["已导入 " + res.imported + " 条。"];
-            if (res.skipped) parts.push("跳过 " + res.skipped + " 条。");
-            if (res.errors && res.errors.length) {
-              parts.push('<span class="error">' + esc(res.errors.join("；")) + "</span>");
-            }
-            showBulkMsg(parts.join(" "), !!(res.errors && res.errors.length));
-            fileInput.value = "";
-            await render();
-          } catch (e) {
-            showBulkMsg("导入失败：" + esc(e.message || String(e)), true);
-            fileInput.value = "";
+        showBulkMsg("正在上传并由大模型解析，请稍候…", false);
+        try {
+          var res = await StudentDataStore.importAiFile(f);
+          var parts = [
+            "已写入 <strong>" +
+              esc(String(res.imported != null ? res.imported : "0")) +
+              "</strong> 条（有效数据行约 " +
+              esc(String(res.totalRows != null ? res.totalRows : "—")) +
+              " 行，分 " +
+              esc(String(res.batches != null ? res.batches : "—")) +
+              " 批，每批 " +
+              esc(String(res.batchSize != null ? res.batchSize : "10")) +
+              " 条）。"
+          ];
+          if (res.errors && res.errors.length) {
+            parts.push(
+              '<span class="error">提示：' + esc(res.errors.slice(0, 8).join("；")) + "</span>"
+            );
           }
-        };
-        reader.onerror = function () {
-          showBulkMsg("读取文件失败。", true);
+          showBulkMsg(parts.join(" "), !!(res.errors && res.errors.length));
           fileInput.value = "";
-        };
-        reader.readAsText(f, "UTF-8");
+          await render();
+        } catch (e) {
+          showBulkMsg("智能导入失败：" + esc(e.message || String(e)), true);
+          fileInput.value = "";
+        }
       });
     }
 

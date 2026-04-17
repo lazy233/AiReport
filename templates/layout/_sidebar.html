@@ -2,12 +2,18 @@
 <aside class="app-sidebar" aria-label="主导航">
   <div class="app-sidebar-brand">
     <div class="app-sidebar-brand-mark" aria-hidden="true">
-      <svg viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <rect x="4" y="6" width="24" height="20" rx="3" stroke="currentColor" stroke-width="1.75" opacity="0.9" />
-        <path d="M4 12h24" stroke="currentColor" stroke-width="1.75" opacity="0.5" />
-        <circle cx="11" cy="9" r="1.25" fill="currentColor" opacity="0.85" />
-        <circle cx="15.5" cy="9" r="1.25" fill="currentColor" opacity="0.55" />
-        <path d="M9 17h8M9 21h14" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" opacity="0.45" />
+      <svg viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+        <defs>
+          <linearGradient id="sidebarBrandGrad" x1="6" y1="5" x2="28" y2="29" gradientUnits="userSpaceOnUse">
+            <stop stop-color="#38bdf8" />
+            <stop offset="1" stop-color="#2563eb" />
+          </linearGradient>
+        </defs>
+        <rect x="5" y="7" width="22" height="19" rx="3" stroke="url(#sidebarBrandGrad)" stroke-width="1.6" />
+        <path d="M5 13h22" stroke="url(#sidebarBrandGrad)" stroke-width="1.6" stroke-linecap="round" opacity="0.45" />
+        <rect x="8" y="9.5" width="4" height="2" rx="0.6" fill="url(#sidebarBrandGrad)" opacity="0.95" />
+        <rect x="13.5" y="9.5" width="4" height="2" rx="0.6" fill="url(#sidebarBrandGrad)" opacity="0.55" />
+        <path d="M9 17.5h7M9 21.5h14" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" opacity="0.42" />
       </svg>
     </div>
     <div class="app-sidebar-brand-text">
@@ -22,11 +28,11 @@
       href="{{ url_for('web.overview') }}"
     >
       <span class="app-nav-icon" aria-hidden="true">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
-          <rect x="3" y="3" width="7" height="9" rx="1" />
-          <rect x="14" y="3" width="7" height="5" rx="1" />
-          <rect x="14" y="12" width="7" height="9" rx="1" />
-          <rect x="3" y="16" width="7" height="5" rx="1" />
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="3" y="3" width="7" height="9" rx="1.5" />
+          <rect x="14" y="3" width="7" height="5" rx="1.5" />
+          <rect x="14" y="12" width="7" height="9" rx="1.5" />
+          <rect x="3" y="16" width="7" height="5" rx="1.5" />
         </svg>
       </span>
       <span class="app-nav-label">概览</span>
@@ -36,9 +42,10 @@
       href="{{ url_for('web.assistant_generate') }}"
     >
       <span class="app-nav-icon" aria-hidden="true">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-          <path d="M14 2v6h6M16 13H8M16 17H8M10 9H8" />
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z" />
+          <path d="M14 2v6h6" />
+          <path d="M8 13h8M8 17h6M8 9h2" />
         </svg>
       </span>
       <span class="app-nav-label">报告生成</span>
@@ -48,9 +55,11 @@
       href="{{ url_for('web.assistant_upload') }}"
     >
       <span class="app-nav-icon" aria-hidden="true">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
-          <rect x="2" y="3" width="20" height="14" rx="2" />
-          <path d="M8 21h8M12 17v4" />
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="2" y="4" width="20" height="14" rx="2" />
+          <path d="M8 21h8" />
+          <path d="M12 17v4" />
+          <path d="M7 10h.01M12 10h.01M17 10h.01" />
         </svg>
       </span>
       <span class="app-nav-label">文档模板管理</span>
@@ -65,10 +74,11 @@
       href="{{ url_for('web.student_data_list') }}"
     >
       <span class="app-nav-icon" aria-hidden="true">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
           <circle cx="9" cy="7" r="4" />
-          <path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" />
+          <path d="M22 21v-2a4 4 0 0 0-3-3.87" />
+          <path d="M16 3.13a4 4 0 0 1 0 7.75" />
         </svg>
       </span>
       <span class="app-nav-label">学生数据管理</span>
@@ -83,10 +93,10 @@
       href="{{ url_for('web.chapter_templates_list') }}"
     >
       <span class="app-nav-icon" aria-hidden="true">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
           <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
           <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
-          <path d="M8 7h8M8 11h8M8 15h4" />
+          <path d="M8 7h8M8 11h6M8 15h4" />
         </svg>
       </span>
       <span class="app-nav-label">报告类型管理</span>
@@ -96,16 +106,28 @@
       href="{{ url_for('web.generation_history_list') }}"
     >
       <span class="app-nav-icon" aria-hidden="true">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
-          <circle cx="12" cy="12" r="10" />
-          <path d="M12 6v6l4 2" />
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
+          <path d="M3 3v5h5" />
+          <path d="M12 7v5l4 2" />
         </svg>
       </span>
       <span class="app-nav-label">历史记录</span>
     </a>
   </nav>
   <div class="app-sidebar-foot">
-    <span class="app-sidebar-foot-dot" aria-hidden="true"></span>
-    <span>工作台导航</span>
+    <div class="app-sidebar-foot-left">
+      <span class="app-sidebar-foot-dot" aria-hidden="true"></span>
+      <span>工作台导航</span>
+    </div>
+    <button type="button" class="app-theme-toggle" id="theme-toggle" aria-label="切换主题">
+      <svg data-theme-icon="sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <circle cx="12" cy="12" r="4" />
+        <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41" />
+      </svg>
+      <svg data-theme-icon="moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z" />
+      </svg>
+    </button>
   </div>
 </aside>

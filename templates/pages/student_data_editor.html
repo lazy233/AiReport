@@ -53,6 +53,12 @@
         return "sd-pf-" + dimId + "-" + key;
       }
 
+      function useTextareaDim(dim, f) {
+        if (TEXTAREA_DIMS[dim.id]) return true;
+        if (dim.id === "term_summary" && f && f.fullWidth) return true;
+        return false;
+      }
+
       function fieldWrapClass(dim, f) {
         var full =
           !!TEXTAREA_DIMS[dim.id] ||
@@ -67,7 +73,8 @@
         var id = pfId(dim.id, f.key);
         var v = value != null ? String(value) : "";
         var wrapCls = fieldWrapClass(dim, f);
-        if (TEXTAREA_DIMS[dim.id]) {
+        if (useTextareaDim(dim, f)) {
+          var rows = dim.id === "guidance" ? "4" : "3";
           return (
             '<div class="' +
             wrapCls +
@@ -79,7 +86,9 @@
             "</label>" +
             '<textarea class="ct-textarea sd-profile-textarea" id="' +
             id +
-            '" rows="4">' +
+            '" rows="' +
+            rows +
+            '">' +
             escapeHtml(v) +
             "</textarea>" +
             "</div>"
@@ -184,8 +193,9 @@
       }
 
       function collectProfile() {
-        var profile = { basic: {}, learning: {}, hours: {}, guidance: {} };
+        var profile = {};
         StudentDataStore.profileSpec.forEach(function (dim) {
+          profile[dim.id] = {};
           dim.fields.forEach(function (f) {
             var el = document.getElementById(pfId(dim.id, f.key));
             profile[dim.id][f.key] = el ? String(el.value).trim() : "";

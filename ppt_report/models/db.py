@@ -90,6 +90,7 @@ class Student(Base):
     nickname_en: Mapped[str] = mapped_column(String(128), nullable=False, default="")
     service_start_date: Mapped[str] = mapped_column(String(32), nullable=False, default="")
     planner_teacher: Mapped[str] = mapped_column(String(64), nullable=False, default="")
+    advisor_teacher: Mapped[str] = mapped_column(String(64), nullable=False, default="")
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         default=lambda: datetime.now(timezone.utc),
@@ -130,28 +131,63 @@ class StudentTermProfile(Base):
 
     # 基础信息（学期相关）
     grade_level: Mapped[str] = mapped_column(String(64), nullable=False, default="")
+    grade_intake: Mapped[str] = mapped_column(String(128), nullable=False, default="")
     school: Mapped[str] = mapped_column(String(256), nullable=False, default="")
     major: Mapped[str] = mapped_column(String(256), nullable=False, default="")
     report_subtitle: Mapped[str] = mapped_column(String(256), nullable=False, default="")
+    service_product: Mapped[str] = mapped_column(String(256), nullable=False, default="")
 
-    # 学习画像
-    strong_subjects: Mapped[str] = mapped_column(Text, nullable=False, default="")
-    intl_scores: Mapped[str] = mapped_column(String(128), nullable=False, default="")
-    study_intent: Mapped[str] = mapped_column(String(128), nullable=False, default="")
-    career_intent: Mapped[str] = mapped_column(String(128), nullable=False, default="")
-    interest_subjects: Mapped[str] = mapped_column(Text, nullable=False, default="")
-    long_term_plan: Mapped[str] = mapped_column(Text, nullable=False, default="")
-    learning_style: Mapped[str] = mapped_column(Text, nullable=False, default="")
-    weak_areas: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    # 学习画像（字段需求：选课/规划；列名与 profile.learning 键均为 snake_case）
+    strength_subjects: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    scores: Mapped[str] = mapped_column(String(128), nullable=False, default="")
+    learning_good: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    learning_weak: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    interests: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    study_goal: Mapped[str] = mapped_column(String(128), nullable=False, default="")
+    career_goal: Mapped[str] = mapped_column(String(128), nullable=False, default="")
+    long_goal: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    degree: Mapped[str] = mapped_column(String(128), nullable=False, default="")
+    duration: Mapped[str] = mapped_column(String(64), nullable=False, default="")
+    credits: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    course_rule: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    gpa_rule: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    selection_rule: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    recommended_courses: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    course_notes: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    term_plan: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    future_plan: Mapped[str] = mapped_column(Text, nullable=False, default="")
 
     # 课时数据
     total_hours: Mapped[int | None] = mapped_column(Integer, nullable=True)
     used_hours: Mapped[int | None] = mapped_column(Integer, nullable=True)
     remaining_hours: Mapped[int | None] = mapped_column(Integer, nullable=True)
-    tutor_subjects: Mapped[str] = mapped_column(Text, nullable=False, default="")
-    preview_subjects: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    prep_courses: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    tutoring_courses: Mapped[str] = mapped_column(Text, nullable=False, default="")
     skill_direction: Mapped[str] = mapped_column(Text, nullable=False, default="")
     skill_description: Mapped[str] = mapped_column(Text, nullable=False, default="")
+
+    # 学期总结/结单（字段需求；profile.term_summary；DB 列 snake_case，「备注」列名 summary_remarks）
+    student_summary: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    school_ddl: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    first_class_time: Mapped[str] = mapped_column(String(64), nullable=False, default="")
+    first_class_note: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    summer_work: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    term_work: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    recorded_courses: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    grades: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    gpa: Mapped[str] = mapped_column(String(64), nullable=False, default="")
+    target_gpa: Mapped[str] = mapped_column(String(64), nullable=False, default="")
+    final_score: Mapped[str] = mapped_column(String(128), nullable=False, default="")
+    services: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    service_count: Mapped[str] = mapped_column(String(32), nullable=False, default="")
+    class_count: Mapped[str] = mapped_column(String(32), nullable=False, default="")
+    total_duration: Mapped[str] = mapped_column(String(64), nullable=False, default="")
+    avg_duration: Mapped[str] = mapped_column(String(64), nullable=False, default="")
+    communication: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    next_goal: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    risk_courses: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    suggestions: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    summary_remarks: Mapped[str] = mapped_column(Text, nullable=False, default="")
 
     # 成长指导
     term_summary: Mapped[str] = mapped_column(Text, nullable=False, default="")
@@ -246,6 +282,43 @@ def _pick_profile(profile: dict[str, Any], dim: str, key: str, max_len: int | No
     return _norm_str(src.get(key), max_len)
 
 
+def _pick_learning_field(
+    profile: dict[str, Any],
+    new_key: str,
+    max_len: int | None,
+    *legacy_keys: str,
+) -> str:
+    """读取 learning 维度；优先字段需求 snake_case，兼容旧 camelCase。"""
+    v = _pick_profile(profile, "learning", new_key, max_len)
+    if v:
+        return v
+    for lk in legacy_keys:
+        v = _pick_profile(profile, "learning", lk, max_len)
+        if v:
+            return v
+    return ""
+
+
+def _pick_hours_field(
+    profile: dict[str, Any],
+    new_key: str,
+    max_len: int | None,
+    *legacy_keys: str,
+) -> str:
+    v = _pick_profile(profile, "hours", new_key, max_len)
+    if v:
+        return v
+    for lk in legacy_keys:
+        v = _pick_profile(profile, "hours", lk, max_len)
+        if v:
+            return v
+    return ""
+
+
+def _pick_term_summary_field(profile: dict[str, Any], key: str, max_len: int | None = None) -> str:
+    return _pick_profile(profile, "term_summary", key, max_len)
+
+
 def _parse_optional_int(v: object) -> int | None:
     if v is None:
         return None
@@ -270,6 +343,7 @@ def _build_profile_dict(student: Student, row: StudentTermProfile) -> dict[str, 
     learning = merged.get("learning") if isinstance(merged.get("learning"), dict) else {}
     hours = merged.get("hours") if isinstance(merged.get("hours"), dict) else {}
     guidance = merged.get("guidance") if isinstance(merged.get("guidance"), dict) else {}
+    ts_block = merged.get("term_summary") if isinstance(merged.get("term_summary"), dict) else {}
     basic.update(
         {
             "studentName": _norm_str(student.student_name),
@@ -277,10 +351,13 @@ def _build_profile_dict(student: Student, row: StudentTermProfile) -> dict[str, 
             "nicknameEn": _norm_str(student.nickname_en),
             "serviceStart": _norm_str(student.service_start_date),
             "plannerTeacher": _norm_str(student.planner_teacher),
+            "advisorTeacher": _norm_str(student.advisor_teacher),
             "school": _norm_str(row.school),
             "major": _norm_str(row.major),
             "gradeLevel": _norm_str(row.grade_level),
+            "gradeIntake": _norm_str(row.grade_intake),
             "currentTerm": _norm_str(row.term_code),
+            "product": _norm_str(row.service_product),
             "reportSubtitle": _norm_str(row.report_subtitle),
             "className": _norm_str(extra.get("className")),
             "email": _norm_str(extra.get("email")),
@@ -290,14 +367,24 @@ def _build_profile_dict(student: Student, row: StudentTermProfile) -> dict[str, 
     )
     learning.update(
         {
-            "strongSubjects": _norm_str(row.strong_subjects),
-            "intlScores": _norm_str(row.intl_scores),
-            "studyIntent": _norm_str(row.study_intent),
-            "careerIntent": _norm_str(row.career_intent),
-            "interestSubjects": _norm_str(row.interest_subjects),
-            "longTermPlan": _norm_str(row.long_term_plan),
-            "learningStyle": _norm_str(row.learning_style),
-            "weakAreas": _norm_str(row.weak_areas),
+            "strength_subjects": _norm_str(row.strength_subjects),
+            "scores": _norm_str(row.scores),
+            "learning_good": _norm_str(row.learning_good),
+            "learning_weak": _norm_str(row.learning_weak),
+            "interests": _norm_str(row.interests),
+            "study_goal": _norm_str(row.study_goal),
+            "career_goal": _norm_str(row.career_goal),
+            "long_goal": _norm_str(row.long_goal),
+            "degree": _norm_str(row.degree),
+            "duration": _norm_str(row.duration),
+            "credits": _norm_str(row.credits),
+            "course_rule": _norm_str(row.course_rule),
+            "gpa_rule": _norm_str(row.gpa_rule),
+            "selection_rule": _norm_str(row.selection_rule),
+            "recommended_courses": _norm_str(row.recommended_courses),
+            "course_notes": _norm_str(row.course_notes),
+            "term_plan": _norm_str(row.term_plan),
+            "future_plan": _norm_str(row.future_plan),
         },
     )
     hours.update(
@@ -305,8 +392,8 @@ def _build_profile_dict(student: Student, row: StudentTermProfile) -> dict[str, 
             "totalHours": "" if row.total_hours is None else str(row.total_hours),
             "usedHours": "" if row.used_hours is None else str(row.used_hours),
             "remainingHours": "" if row.remaining_hours is None else str(row.remaining_hours),
-            "tutorSubjects": _norm_str(row.tutor_subjects),
-            "previewSubjects": _norm_str(row.preview_subjects),
+            "prep_courses": _norm_str(row.prep_courses),
+            "tutoring_courses": _norm_str(row.tutoring_courses),
             "skillDirection": _norm_str(row.skill_direction),
             "skillDescription": _norm_str(row.skill_description),
         },
@@ -319,7 +406,41 @@ def _build_profile_dict(student: Student, row: StudentTermProfile) -> dict[str, 
             "longTermDevelopment": _norm_str(row.long_term_development),
         },
     )
-    return {"basic": basic, "learning": learning, "hours": hours, "guidance": guidance}
+    ts_block.update(
+        {
+            "student_summary": _norm_str(row.student_summary),
+            "school_ddl": _norm_str(row.school_ddl),
+            "first_class_time": _norm_str(row.first_class_time),
+            "first_class_note": _norm_str(row.first_class_note),
+            "summer_work": _norm_str(row.summer_work),
+            "term_work": _norm_str(row.term_work),
+            "recorded_courses": _norm_str(row.recorded_courses),
+            "total_hours": "" if row.total_hours is None else str(row.total_hours),
+            "used_hours": "" if row.used_hours is None else str(row.used_hours),
+            "left_hours": "" if row.remaining_hours is None else str(row.remaining_hours),
+            "grades": _norm_str(row.grades),
+            "gpa": _norm_str(row.gpa),
+            "target_gpa": _norm_str(row.target_gpa),
+            "final_score": _norm_str(row.final_score),
+            "services": _norm_str(row.services),
+            "service_count": _norm_str(row.service_count),
+            "class_count": _norm_str(row.class_count),
+            "total_duration": _norm_str(row.total_duration),
+            "avg_duration": _norm_str(row.avg_duration),
+            "communication": _norm_str(row.communication),
+            "next_goal": _norm_str(row.next_goal),
+            "risk_courses": _norm_str(row.risk_courses),
+            "suggestions": _norm_str(row.suggestions),
+            "remarks": _norm_str(row.summary_remarks),
+        },
+    )
+    return {
+        "basic": basic,
+        "learning": learning,
+        "hours": hours,
+        "guidance": guidance,
+        "term_summary": ts_block,
+    }
 
 
 def _record_from_pair(student: Student, row: StudentTermProfile) -> dict[str, object]:
@@ -354,8 +475,11 @@ def init_db(database_url: str | None) -> bool:
         )
         _SessionLocal = sessionmaker(bind=_engine, autocommit=False, autoflush=False)
         Base.metadata.create_all(bind=_engine)
-        with _engine.connect() as conn:
+        with _engine.begin() as conn:
             conn.execute(text("SELECT 1"))
+            _ensure_student_field_columns(conn)
+            _migrate_student_term_profile_rename_and_add(conn)
+            _migrate_term_summary_closing_columns(conn)
         try:
             with _SessionLocal() as s:
                 _ensure_word_table_fill_template(s)
@@ -371,6 +495,93 @@ def init_db(database_url: str | None) -> bool:
         _engine = None
         _SessionLocal = None
         return False
+
+
+def _ensure_student_field_columns(conn) -> None:
+    """已有库在模型增列后需 ALTER；create_all 不会修改已存在表结构。"""
+    for stmt in (
+        "ALTER TABLE students ADD COLUMN IF NOT EXISTS advisor_teacher VARCHAR(64) NOT NULL DEFAULT ''",
+        "ALTER TABLE student_term_profiles ADD COLUMN IF NOT EXISTS grade_intake VARCHAR(128) NOT NULL DEFAULT ''",
+        "ALTER TABLE student_term_profiles ADD COLUMN IF NOT EXISTS service_product VARCHAR(256) NOT NULL DEFAULT ''",
+    ):
+        conn.execute(text(stmt))
+
+
+def _pg_table_columns(conn, table: str) -> set[str]:
+    r = conn.execute(
+        text(
+            "SELECT column_name FROM information_schema.columns "
+            "WHERE table_schema = 'public' AND table_name = :t",
+        ),
+        {"t": table},
+    )
+    return {row[0] for row in r.fetchall()}
+
+
+def _migrate_student_term_profile_rename_and_add(conn) -> None:
+    """旧列名重命名为字段需求名，并补充选课/规划新增列。"""
+    cols = _pg_table_columns(conn, "student_term_profiles")
+    if not cols:
+        return
+    renames = [
+        ("strong_subjects", "strength_subjects"),
+        ("intl_scores", "scores"),
+        ("study_intent", "study_goal"),
+        ("career_intent", "career_goal"),
+        ("interest_subjects", "interests"),
+        ("long_term_plan", "long_goal"),
+        ("learning_style", "learning_good"),
+        ("weak_areas", "learning_weak"),
+        ("tutor_subjects", "tutoring_courses"),
+        ("preview_subjects", "prep_courses"),
+    ]
+    for old, new in renames:
+        if old in cols and new not in cols:
+            conn.execute(text(f'ALTER TABLE student_term_profiles RENAME COLUMN "{old}" TO "{new}"'))
+            cols.discard(old)
+            cols.add(new)
+    cols = _pg_table_columns(conn, "student_term_profiles")
+    for stmt in (
+        "ALTER TABLE student_term_profiles ADD COLUMN IF NOT EXISTS degree VARCHAR(128) NOT NULL DEFAULT ''",
+        "ALTER TABLE student_term_profiles ADD COLUMN IF NOT EXISTS duration VARCHAR(64) NOT NULL DEFAULT ''",
+        "ALTER TABLE student_term_profiles ADD COLUMN IF NOT EXISTS credits TEXT NOT NULL DEFAULT ''",
+        "ALTER TABLE student_term_profiles ADD COLUMN IF NOT EXISTS course_rule TEXT NOT NULL DEFAULT ''",
+        "ALTER TABLE student_term_profiles ADD COLUMN IF NOT EXISTS gpa_rule TEXT NOT NULL DEFAULT ''",
+        "ALTER TABLE student_term_profiles ADD COLUMN IF NOT EXISTS selection_rule TEXT NOT NULL DEFAULT ''",
+        "ALTER TABLE student_term_profiles ADD COLUMN IF NOT EXISTS recommended_courses TEXT NOT NULL DEFAULT ''",
+        "ALTER TABLE student_term_profiles ADD COLUMN IF NOT EXISTS course_notes TEXT NOT NULL DEFAULT ''",
+        "ALTER TABLE student_term_profiles ADD COLUMN IF NOT EXISTS term_plan TEXT NOT NULL DEFAULT ''",
+        "ALTER TABLE student_term_profiles ADD COLUMN IF NOT EXISTS future_plan TEXT NOT NULL DEFAULT ''",
+    ):
+        conn.execute(text(stmt))
+
+
+def _migrate_term_summary_closing_columns(conn) -> None:
+    """学期总结/结单模板字段（字段需求）。"""
+    for stmt in (
+        "ALTER TABLE student_term_profiles ADD COLUMN IF NOT EXISTS student_summary TEXT NOT NULL DEFAULT ''",
+        "ALTER TABLE student_term_profiles ADD COLUMN IF NOT EXISTS school_ddl TEXT NOT NULL DEFAULT ''",
+        "ALTER TABLE student_term_profiles ADD COLUMN IF NOT EXISTS first_class_time VARCHAR(64) NOT NULL DEFAULT ''",
+        "ALTER TABLE student_term_profiles ADD COLUMN IF NOT EXISTS first_class_note TEXT NOT NULL DEFAULT ''",
+        "ALTER TABLE student_term_profiles ADD COLUMN IF NOT EXISTS summer_work TEXT NOT NULL DEFAULT ''",
+        "ALTER TABLE student_term_profiles ADD COLUMN IF NOT EXISTS term_work TEXT NOT NULL DEFAULT ''",
+        "ALTER TABLE student_term_profiles ADD COLUMN IF NOT EXISTS recorded_courses TEXT NOT NULL DEFAULT ''",
+        "ALTER TABLE student_term_profiles ADD COLUMN IF NOT EXISTS grades TEXT NOT NULL DEFAULT ''",
+        "ALTER TABLE student_term_profiles ADD COLUMN IF NOT EXISTS gpa VARCHAR(64) NOT NULL DEFAULT ''",
+        "ALTER TABLE student_term_profiles ADD COLUMN IF NOT EXISTS target_gpa VARCHAR(64) NOT NULL DEFAULT ''",
+        "ALTER TABLE student_term_profiles ADD COLUMN IF NOT EXISTS final_score VARCHAR(128) NOT NULL DEFAULT ''",
+        "ALTER TABLE student_term_profiles ADD COLUMN IF NOT EXISTS services TEXT NOT NULL DEFAULT ''",
+        "ALTER TABLE student_term_profiles ADD COLUMN IF NOT EXISTS service_count VARCHAR(32) NOT NULL DEFAULT ''",
+        "ALTER TABLE student_term_profiles ADD COLUMN IF NOT EXISTS class_count VARCHAR(32) NOT NULL DEFAULT ''",
+        "ALTER TABLE student_term_profiles ADD COLUMN IF NOT EXISTS total_duration VARCHAR(64) NOT NULL DEFAULT ''",
+        "ALTER TABLE student_term_profiles ADD COLUMN IF NOT EXISTS avg_duration VARCHAR(64) NOT NULL DEFAULT ''",
+        "ALTER TABLE student_term_profiles ADD COLUMN IF NOT EXISTS communication TEXT NOT NULL DEFAULT ''",
+        "ALTER TABLE student_term_profiles ADD COLUMN IF NOT EXISTS next_goal TEXT NOT NULL DEFAULT ''",
+        "ALTER TABLE student_term_profiles ADD COLUMN IF NOT EXISTS risk_courses TEXT NOT NULL DEFAULT ''",
+        "ALTER TABLE student_term_profiles ADD COLUMN IF NOT EXISTS suggestions TEXT NOT NULL DEFAULT ''",
+        "ALTER TABLE student_term_profiles ADD COLUMN IF NOT EXISTS summary_remarks TEXT NOT NULL DEFAULT ''",
+    ):
+        conn.execute(text(stmt))
 
 
 def db_enabled() -> bool:
@@ -780,6 +991,7 @@ def save_student_record(payload: dict[str, Any]) -> tuple[str, dict[str, object]
     learning = profile.get("learning") if isinstance(profile.get("learning"), dict) else {}
     hours = profile.get("hours") if isinstance(profile.get("hours"), dict) else {}
     guidance = profile.get("guidance") if isinstance(profile.get("guidance"), dict) else {}
+    term_summary = profile.get("term_summary") if isinstance(profile.get("term_summary"), dict) else {}
 
     content = _norm_str(data.get("content"))
     student_name = _norm_str(basic.get("studentName") or data.get("name"), 128)
@@ -813,31 +1025,74 @@ def save_student_record(payload: dict[str, Any]) -> tuple[str, dict[str, object]
         student.nickname_en = _pick_profile(profile, "basic", "nicknameEn", 128)
         student.service_start_date = _pick_profile(profile, "basic", "serviceStart", 32)
         student.planner_teacher = _pick_profile(profile, "basic", "plannerTeacher", 64)
+        student.advisor_teacher = _pick_profile(profile, "basic", "advisorTeacher", 64)
 
         rec = existing or StudentTermProfile()
         rec.student_id = student.id
         rec.term_code = _pick_profile(profile, "basic", "currentTerm", 32)
         rec.grade_level = _pick_profile(profile, "basic", "gradeLevel", 64)
+        rec.grade_intake = _pick_profile(profile, "basic", "gradeIntake", 128)
         rec.school = _pick_profile(profile, "basic", "school", 256)
         rec.major = _pick_profile(profile, "basic", "major", 256)
         rec.report_subtitle = _pick_profile(profile, "basic", "reportSubtitle", 256)
+        rec.service_product = _pick_profile(profile, "basic", "product", 256)
 
-        rec.strong_subjects = _pick_profile(profile, "learning", "strongSubjects")
-        rec.intl_scores = _pick_profile(profile, "learning", "intlScores", 128)
-        rec.study_intent = _pick_profile(profile, "learning", "studyIntent", 128)
-        rec.career_intent = _pick_profile(profile, "learning", "careerIntent", 128)
-        rec.interest_subjects = _pick_profile(profile, "learning", "interestSubjects")
-        rec.long_term_plan = _pick_profile(profile, "learning", "longTermPlan")
-        rec.learning_style = _pick_profile(profile, "learning", "learningStyle")
-        rec.weak_areas = _pick_profile(profile, "learning", "weakAreas")
+        rec.strength_subjects = _pick_learning_field(
+            profile, "strength_subjects", None, "strongSubjects",
+        )
+        rec.scores = _pick_learning_field(profile, "scores", 128, "intlScores")
+        rec.learning_good = _pick_learning_field(profile, "learning_good", None, "learningStyle")
+        rec.learning_weak = _pick_learning_field(profile, "learning_weak", None, "weakAreas")
+        rec.interests = _pick_learning_field(profile, "interests", None, "interestSubjects")
+        rec.study_goal = _pick_learning_field(profile, "study_goal", 128, "studyIntent")
+        rec.career_goal = _pick_learning_field(profile, "career_goal", 128, "careerIntent")
+        rec.long_goal = _pick_learning_field(profile, "long_goal", None, "longTermPlan")
+        rec.degree = _pick_learning_field(profile, "degree", 128)
+        rec.duration = _pick_learning_field(profile, "duration", 64)
+        rec.credits = _pick_learning_field(profile, "credits", None)
+        rec.course_rule = _pick_learning_field(profile, "course_rule", None)
+        rec.gpa_rule = _pick_learning_field(profile, "gpa_rule", None)
+        rec.selection_rule = _pick_learning_field(profile, "selection_rule", None)
+        rec.recommended_courses = _pick_learning_field(profile, "recommended_courses", None)
+        rec.course_notes = _pick_learning_field(profile, "course_notes", None)
+        rec.term_plan = _pick_learning_field(profile, "term_plan", None)
+        rec.future_plan = _pick_learning_field(profile, "future_plan", None)
 
-        rec.total_hours = _parse_optional_int(hours.get("totalHours"))
-        rec.used_hours = _parse_optional_int(hours.get("usedHours"))
-        rec.remaining_hours = _parse_optional_int(hours.get("remainingHours"))
-        rec.tutor_subjects = _pick_profile(profile, "hours", "tutorSubjects")
-        rec.preview_subjects = _pick_profile(profile, "hours", "previewSubjects")
+        def _hours_int(camel: str, snake: str) -> int | None:
+            v = _parse_optional_int(hours.get(camel))
+            if v is not None:
+                return v
+            return _parse_optional_int(term_summary.get(snake))
+
+        rec.total_hours = _hours_int("totalHours", "total_hours")
+        rec.used_hours = _hours_int("usedHours", "used_hours")
+        rec.remaining_hours = _hours_int("remainingHours", "left_hours")
+        rec.prep_courses = _pick_hours_field(profile, "prep_courses", None, "previewSubjects")
+        rec.tutoring_courses = _pick_hours_field(profile, "tutoring_courses", None, "tutorSubjects")
         rec.skill_direction = _pick_profile(profile, "hours", "skillDirection")
         rec.skill_description = _pick_profile(profile, "hours", "skillDescription")
+
+        rec.student_summary = _pick_term_summary_field(profile, "student_summary")
+        rec.school_ddl = _pick_term_summary_field(profile, "school_ddl")
+        rec.first_class_time = _pick_term_summary_field(profile, "first_class_time", 64)
+        rec.first_class_note = _pick_term_summary_field(profile, "first_class_note")
+        rec.summer_work = _pick_term_summary_field(profile, "summer_work")
+        rec.term_work = _pick_term_summary_field(profile, "term_work")
+        rec.recorded_courses = _pick_term_summary_field(profile, "recorded_courses")
+        rec.grades = _pick_term_summary_field(profile, "grades")
+        rec.gpa = _pick_term_summary_field(profile, "gpa", 64)
+        rec.target_gpa = _pick_term_summary_field(profile, "target_gpa", 64)
+        rec.final_score = _pick_term_summary_field(profile, "final_score", 128)
+        rec.services = _pick_term_summary_field(profile, "services")
+        rec.service_count = _pick_term_summary_field(profile, "service_count", 32)
+        rec.class_count = _pick_term_summary_field(profile, "class_count", 32)
+        rec.total_duration = _pick_term_summary_field(profile, "total_duration", 64)
+        rec.avg_duration = _pick_term_summary_field(profile, "avg_duration", 64)
+        rec.communication = _pick_term_summary_field(profile, "communication")
+        rec.next_goal = _pick_term_summary_field(profile, "next_goal")
+        rec.risk_courses = _pick_term_summary_field(profile, "risk_courses")
+        rec.suggestions = _pick_term_summary_field(profile, "suggestions")
+        rec.summary_remarks = _pick_term_summary_field(profile, "remarks")
 
         rec.term_summary = _pick_profile(profile, "guidance", "termSummary")
         rec.course_feedback = _pick_profile(profile, "guidance", "courseFeedback")
@@ -858,6 +1113,7 @@ def save_student_record(payload: dict[str, Any]) -> tuple[str, dict[str, object]
                     "learning": learning if isinstance(learning, dict) else {},
                     "hours": hours if isinstance(hours, dict) else {},
                     "guidance": guidance if isinstance(guidance, dict) else {},
+                    "term_summary": term_summary if isinstance(term_summary, dict) else {},
                 },
             },
         )

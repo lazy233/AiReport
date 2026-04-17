@@ -29,18 +29,63 @@ _LABEL_HINTS: dict[str, str] = {
     "basic.school": "学校",
     "basic.major": "专业",
     "basic.gradeLevel": "年级",
+    "basic.gradeIntake": "年级/入学时间",
     "basic.currentTerm": "学期",
+    "basic.product": "产品",
     "basic.className": "班级",
     "basic.plannerTeacher": "规划老师",
-    "learning.strongSubjects": "优势学科",
-    "learning.studyIntent": "升学意向",
-    "learning.careerIntent": "职业意向",
-    "learning.longTermPlan": "长期规划",
-    "learning.learningStyle": "学习风格",
+    "basic.advisorTeacher": "教服老师",
+    "learning.strength_subjects": "擅长科目",
+    "learning.scores": "语言/国际成绩",
+    "learning.learning_good": "擅长学习形式",
+    "learning.learning_weak": "不擅长学习形式",
+    "learning.interests": "兴趣方向",
+    "learning.study_goal": "升学意向",
+    "learning.career_goal": "就业意向",
+    "learning.long_goal": "长远目标",
+    "learning.degree": "学位",
+    "learning.duration": "学制",
+    "learning.credits": "学分要求",
+    "learning.course_rule": "课程要求",
+    "learning.gpa_rule": "GPA要求",
+    "learning.selection_rule": "选课规则",
+    "learning.recommended_courses": "推荐课程",
+    "learning.course_notes": "课程说明",
+    "learning.term_plan": "学期规划",
+    "learning.future_plan": "后续规划",
+    "hours.prep_courses": "预习课程",
+    "hours.tutoring_courses": "同步辅导课程",
     "hours.totalHours": "总课时",
     "hours.usedHours": "已用课时",
-    "guidance.termSummary": "学期总结",
-    "guidance.courseFeedback": "课程反馈",
+    "hours.remainingHours": "剩余课时",
+    "guidance.termSummary": "学期表现概述",
+    "guidance.courseFeedback": "课程反馈与建议",
+    "guidance.shortTermAdvice": "短期学习建议",
+    "guidance.longTermDevelopment": "长期发展规划",
+    "term_summary.student_summary": "学生情况",
+    "term_summary.school_ddl": "校方DDL",
+    "term_summary.first_class_time": "首课时间",
+    "term_summary.first_class_note": "首课记录",
+    "term_summary.summer_work": "暑期辅导",
+    "term_summary.term_work": "学期辅导",
+    "term_summary.recorded_courses": "录播完成",
+    "term_summary.total_hours": "总课时",
+    "term_summary.used_hours": "已用课时",
+    "term_summary.left_hours": "剩余课时",
+    "term_summary.grades": "成绩明细",
+    "term_summary.gpa": "GPA",
+    "term_summary.target_gpa": "目标GPA",
+    "term_summary.final_score": "最终成绩",
+    "term_summary.services": "服务内容",
+    "term_summary.service_count": "服务次数",
+    "term_summary.class_count": "课程次数",
+    "term_summary.total_duration": "总时长",
+    "term_summary.avg_duration": "平均课时",
+    "term_summary.communication": "沟通频次",
+    "term_summary.next_goal": "下阶段目标",
+    "term_summary.risk_courses": "风险科目",
+    "term_summary.suggestions": "下阶段建议",
+    "term_summary.remarks": "备注",
 }
 
 
@@ -72,7 +117,7 @@ def flatten_student_record(item: dict[str, Any]) -> list[dict[str, str]]:
     prof = item.get("profile")
     if not isinstance(prof, dict):
         return out
-    for dim in ("basic", "learning", "hours", "guidance"):
+    for dim in ("basic", "learning", "hours", "guidance", "term_summary"):
         block = prof.get(dim)
         if not isinstance(block, dict):
             continue
@@ -279,7 +324,7 @@ def _dashscope_assign_fields(
         "field_catalog": field_catalog,
         "output_schema": {
             "assignments": [
-                {"slotIndex": 0, "fieldKeys": ["basic.studentName", "learning.studyIntent"]},
+                {"slotIndex": 0, "fieldKeys": ["basic.studentName", "learning.study_goal"]},
             ],
         },
     }

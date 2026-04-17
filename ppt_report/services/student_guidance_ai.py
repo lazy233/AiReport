@@ -42,6 +42,7 @@ def generate_student_guidance(
     basic = _norm_profile_slice(prof.get("basic"))
     learning = _norm_profile_slice(prof.get("learning"))
     hours = _norm_profile_slice(prof.get("hours"))
+    term_summary = _norm_profile_slice(prof.get("term_summary"))
     guidance_existing = _norm_profile_slice(prof.get("guidance"))
 
     context: dict[str, Any] = {
@@ -49,6 +50,8 @@ def generate_student_guidance(
         "学习画像": learning,
         "课时数据": hours,
     }
+    if term_summary:
+        context["学期总结结单"] = term_summary
     if guidance_existing:
         context["已有成长指导草稿"] = guidance_existing
     content_trim = _trim_text(extra_content, 6000)

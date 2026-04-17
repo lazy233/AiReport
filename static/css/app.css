@@ -2,8 +2,9 @@
  * 报告生成平台 — 全局样式
  * 布局：侧栏 + 主区（便于后续扩展多页面）
  */
-:root {
-  color-scheme: light;
+/* 深色（默认）：深蓝侧栏 + 浅色主内容区 */
+[data-theme="dark"] {
+  color-scheme: dark;
   --bg: #f3f7fb;
   --card: #ffffff;
   --text: #111827;
@@ -15,8 +16,12 @@
   --primary-soft: #eff6ff;
   --success-soft: #ecfdf3;
   --shadow: 0 10px 30px rgba(15, 23, 42, 0.08);
+  --card-edge: rgba(255, 255, 255, 0.7);
+  --main-bg: #f0f4f8;
+  --main-gradient: linear-gradient(180deg, #f7fbff 0%, var(--bg) 100%);
   --sidebar-bg: #0f2744;
   --sidebar-bg-top: #0a1628;
+  --sidebar-bg-end: #0b2238;
   --sidebar-text: #f1f5f9;
   --sidebar-muted: #94a3b8;
   --sidebar-hover: rgba(255, 255, 255, 0.07);
@@ -24,8 +29,73 @@
   --sidebar-active-glow: rgba(56, 189, 248, 0.35);
   --sidebar-accent: #38bdf8;
   --sidebar-icon: rgba(226, 232, 240, 0.55);
+  --sidebar-icon-hover: rgba(226, 232, 240, 0.88);
   --sidebar-icon-active: #e0f2fe;
-  --main-bg: #f0f4f8;
+  --sidebar-edge: rgba(255, 255, 255, 0.07);
+  --sidebar-divider: rgba(255, 255, 255, 0.07);
+  --sidebar-shadow: 4px 0 24px rgba(2, 12, 27, 0.35);
+  --sidebar-kicker: rgba(148, 163, 184, 0.85);
+  --sidebar-foot-text: rgba(148, 163, 184, 0.75);
+  --sidebar-link-hover-text: #fff;
+  --sidebar-link-active-text: #fff;
+  --sidebar-active-ring-1: rgba(56, 189, 248, 0.2);
+  --sidebar-active-ring-2: rgba(56, 189, 248, 0.08);
+  --sidebar-fold-bg: rgba(255, 255, 255, 0.02);
+  --sidebar-fold-border: rgba(255, 255, 255, 0.04);
+  --sidebar-fold-open-bg: rgba(255, 255, 255, 0.05);
+  --sidebar-fold-open-border: rgba(255, 255, 255, 0.08);
+  --sidebar-fold-hover-border: rgba(255, 255, 255, 0.06);
+  --sidebar-brand-mark-bg: linear-gradient(145deg, rgba(56, 189, 248, 0.18), rgba(37, 99, 235, 0.12));
+  --sidebar-brand-mark-border: rgba(56, 189, 248, 0.25);
+  --sidebar-brand-mark-shadow: 0 4px 14px rgba(0, 0, 0, 0.2);
+}
+
+/* 浅色：整体明亮，侧栏为白底 */
+[data-theme="light"] {
+  color-scheme: light;
+  --bg: #f1f5f9;
+  --card: #ffffff;
+  --text: #0f172a;
+  --subtle: #64748b;
+  --line: #e2e8f0;
+  --line-strong: #cbd5e1;
+  --primary: #2563eb;
+  --primary-dark: #1d4ed8;
+  --primary-soft: #eff6ff;
+  --success-soft: #ecfdf3;
+  --shadow: 0 10px 28px rgba(15, 23, 42, 0.06);
+  --card-edge: rgba(226, 232, 240, 0.95);
+  --main-bg: #e8edf3;
+  --main-gradient: linear-gradient(180deg, #ffffff 0%, var(--bg) 100%);
+  --sidebar-bg: #ffffff;
+  --sidebar-bg-top: #f8fafc;
+  --sidebar-bg-end: #eef2f6;
+  --sidebar-text: #0f172a;
+  --sidebar-muted: #64748b;
+  --sidebar-hover: rgba(37, 99, 235, 0.07);
+  --sidebar-active-bg: rgba(37, 99, 235, 0.09);
+  --sidebar-active-glow: rgba(37, 99, 235, 0.22);
+  --sidebar-accent: #2563eb;
+  --sidebar-icon: rgba(71, 85, 105, 0.72);
+  --sidebar-icon-hover: rgba(37, 99, 235, 0.88);
+  --sidebar-icon-active: #1d4ed8;
+  --sidebar-edge: rgba(15, 23, 42, 0.08);
+  --sidebar-divider: rgba(15, 23, 42, 0.08);
+  --sidebar-shadow: 4px 0 20px rgba(15, 23, 42, 0.05);
+  --sidebar-kicker: rgba(100, 116, 139, 0.9);
+  --sidebar-foot-text: rgba(100, 116, 139, 0.85);
+  --sidebar-link-hover-text: #0f172a;
+  --sidebar-link-active-text: #0f172a;
+  --sidebar-active-ring-1: rgba(37, 99, 235, 0.2);
+  --sidebar-active-ring-2: rgba(37, 99, 235, 0.07);
+  --sidebar-fold-bg: rgba(15, 23, 42, 0.02);
+  --sidebar-fold-border: rgba(15, 23, 42, 0.07);
+  --sidebar-fold-open-bg: rgba(37, 99, 235, 0.05);
+  --sidebar-fold-open-border: rgba(15, 23, 42, 0.1);
+  --sidebar-fold-hover-border: rgba(15, 23, 42, 0.1);
+  --sidebar-brand-mark-bg: linear-gradient(145deg, rgba(37, 99, 235, 0.12), rgba(14, 165, 233, 0.1));
+  --sidebar-brand-mark-border: rgba(37, 99, 235, 0.22);
+  --sidebar-brand-mark-shadow: 0 4px 14px rgba(37, 99, 235, 0.12);
 }
 
 *,
@@ -54,12 +124,12 @@ body.app-body {
   position: sticky;
   top: 0;
   height: 100vh;
-  background: linear-gradient(165deg, var(--sidebar-bg-top) 0%, var(--sidebar-bg) 42%, #0b2238 100%);
+  background: linear-gradient(165deg, var(--sidebar-bg-top) 0%, var(--sidebar-bg) 42%, var(--sidebar-bg-end) 100%);
   color: var(--sidebar-text);
   display: flex;
   flex-direction: column;
-  border-right: 1px solid rgba(255, 255, 255, 0.07);
-  box-shadow: 4px 0 24px rgba(2, 12, 27, 0.35);
+  border-right: 1px solid var(--sidebar-edge);
+  box-shadow: var(--sidebar-shadow);
 }
 
 .app-sidebar-brand {
@@ -67,7 +137,7 @@ body.app-body {
   align-items: center;
   gap: 12px;
   padding: 20px 16px 18px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+  border-bottom: 1px solid var(--sidebar-divider);
 }
 
 .app-sidebar-brand-mark {
@@ -79,9 +149,9 @@ body.app-body {
   align-items: center;
   justify-content: center;
   color: var(--sidebar-accent);
-  background: linear-gradient(145deg, rgba(56, 189, 248, 0.18), rgba(37, 99, 235, 0.12));
-  border: 1px solid rgba(56, 189, 248, 0.25);
-  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.2);
+  background: var(--sidebar-brand-mark-bg);
+  border: 1px solid var(--sidebar-brand-mark-border);
+  box-shadow: var(--sidebar-brand-mark-shadow);
 }
 
 .app-sidebar-brand-mark svg {
@@ -122,7 +192,7 @@ body.app-body {
   font-weight: 700;
   letter-spacing: 0.14em;
   text-transform: uppercase;
-  color: rgba(148, 163, 184, 0.85);
+  color: var(--sidebar-kicker);
 }
 
 .app-nav-section {
@@ -175,19 +245,19 @@ body.app-body {
 
 .app-nav-link:hover {
   background: var(--sidebar-hover);
-  color: #fff;
+  color: var(--sidebar-link-hover-text);
 }
 
 .app-nav-link:hover .app-nav-icon {
-  color: rgba(226, 232, 240, 0.88);
+  color: var(--sidebar-icon-hover);
 }
 
 .app-nav-link.is-active {
   background: var(--sidebar-active-bg);
-  color: #fff;
+  color: var(--sidebar-link-active-text);
   box-shadow:
-    inset 0 0 0 1px rgba(56, 189, 248, 0.2),
-    0 0 0 1px rgba(56, 189, 248, 0.08);
+    inset 0 0 0 1px var(--sidebar-active-ring-1),
+    0 0 0 1px var(--sidebar-active-ring-2);
 }
 
 .app-nav-link.is-active .app-nav-icon {
@@ -229,8 +299,8 @@ body.app-body {
   display: flex;
   align-items: center;
   gap: 11px;
-  background: rgba(255, 255, 255, 0.02);
-  border: 1px solid rgba(255, 255, 255, 0.04);
+  background: var(--sidebar-fold-bg);
+  border: 1px solid var(--sidebar-fold-border);
   transition:
     background 0.18s ease,
     border-color 0.18s ease;
@@ -241,7 +311,7 @@ body.app-body {
 }
 
 .app-nav-fold[open] > .app-nav-fold-summary .app-nav-icon {
-  color: rgba(226, 232, 240, 0.82);
+  color: var(--sidebar-icon-hover);
 }
 
 .app-nav-fold-title {
@@ -267,8 +337,8 @@ body.app-body {
 }
 
 .app-nav-fold[open] > .app-nav-fold-summary {
-  background: rgba(255, 255, 255, 0.05);
-  border-color: rgba(255, 255, 255, 0.08);
+  background: var(--sidebar-fold-open-bg);
+  border-color: var(--sidebar-fold-open-border);
 }
 
 .app-nav-fold[open] > .app-nav-fold-summary::after {
@@ -277,7 +347,7 @@ body.app-body {
 
 .app-nav-fold-summary:hover {
   background: var(--sidebar-hover);
-  border-color: rgba(255, 255, 255, 0.06);
+  border-color: var(--sidebar-fold-hover-border);
 }
 
 .app-nav-fold-inner {
@@ -311,13 +381,70 @@ body.app-body {
 .app-sidebar-foot {
   display: flex;
   align-items: center;
-  gap: 8px;
+  justify-content: space-between;
+  gap: 12px;
   padding: 14px 16px 16px;
-  border-top: 1px solid rgba(255, 255, 255, 0.07);
+  border-top: 1px solid var(--sidebar-divider);
   font-size: 11px;
   font-weight: 500;
   letter-spacing: 0.06em;
-  color: rgba(148, 163, 184, 0.75);
+  color: var(--sidebar-foot-text);
+}
+
+.app-sidebar-foot-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.app-theme-toggle {
+  flex-shrink: 0;
+  width: 38px;
+  height: 38px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 11px;
+  border: 1px solid var(--sidebar-fold-border);
+  background: var(--sidebar-fold-bg);
+  color: var(--sidebar-icon);
+  cursor: pointer;
+  transition:
+    background 0.18s ease,
+    border-color 0.18s ease,
+    color 0.18s ease,
+    box-shadow 0.18s ease;
+}
+
+.app-theme-toggle:hover {
+  background: var(--sidebar-hover);
+  color: var(--sidebar-icon-hover);
+  border-color: var(--sidebar-fold-hover-border);
+}
+
+.app-theme-toggle:focus-visible {
+  outline: 2px solid var(--sidebar-accent);
+  outline-offset: 2px;
+}
+
+.app-theme-toggle svg {
+  width: 20px;
+  height: 20px;
+}
+
+.app-theme-toggle [data-theme-icon="sun"],
+.app-theme-toggle [data-theme-icon="moon"] {
+  display: none;
+}
+
+[data-theme="dark"] .app-theme-toggle [data-theme-icon="sun"] {
+  display: block;
+}
+
+[data-theme="light"] .app-theme-toggle [data-theme-icon="moon"] {
+  display: block;
 }
 
 .app-sidebar-foot-dot {
@@ -332,7 +459,7 @@ body.app-body {
 .app-main {
   flex: 1;
   min-width: 0;
-  background: linear-gradient(180deg, #f7fbff 0%, var(--bg) 100%);
+  background: var(--main-gradient);
 }
 
 .app-main-inner {
@@ -347,7 +474,7 @@ body.app-body {
   padding: 22px;
   box-shadow: var(--shadow);
   margin-bottom: 18px;
-  border: 1px solid rgba(255, 255, 255, 0.7);
+  border: 1px solid var(--card-edge);
 }
 
 h1,
@@ -2500,6 +2627,7 @@ summary::-webkit-details-marker {
   color: var(--line-strong);
 }
 
+/* 文档为 color-scheme: dark 时，原生 select 会按深色控件着色；白底下需强制浅色控件方案并指定文字色 */
 .select-inline {
   max-width: 100%;
   width: min(480px, 100%);
@@ -2507,7 +2635,14 @@ summary::-webkit-details-marker {
   border-radius: 12px;
   border: 1px solid var(--line-strong);
   background: #fff;
+  color: var(--text);
+  color-scheme: light;
   font: inherit;
+}
+
+.select-inline option {
+  color: var(--text);
+  background: var(--card);
 }
 
 .table-scroll {
@@ -3153,7 +3288,7 @@ button.buttonlink.danger:hover {
     flex-direction: column;
     flex-wrap: nowrap;
     align-items: stretch;
-    box-shadow: 0 4px 24px rgba(2, 12, 27, 0.2);
+    box-shadow: var(--sidebar-shadow);
   }
 
   .app-nav {

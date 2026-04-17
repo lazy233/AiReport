@@ -58,16 +58,31 @@
         basic: "填写学生的基本资料，这些信息将显示在报告封面",
         learning: "学生学习能力、偏好与目标画像",
         hours: "课时消耗、辅导与技能提升相关数据",
-        guidance: "阶段反馈与短长期发展建议"
+        guidance: "阶段反馈与短长期发展建议",
+        term_summary: "学期总结与结单类结构化字段（与成长指导区分）"
       };
       var WIDE_KEYS = {
-        learningStyle: true,
-        weakAreas: true,
+        learning_weak: true,
+        long_goal: true,
+        credits: true,
+        course_rule: true,
+        gpa_rule: true,
+        selection_rule: true,
+        recommended_courses: true,
+        course_notes: true,
+        term_plan: true,
+        future_plan: true,
         termSummary: true,
         courseFeedback: true,
         shortTermAdvice: true,
         longTermDevelopment: true,
-        skillDescription: true
+        skillDescription: true,
+        student_summary: true,
+        first_class_note: true,
+        grades: true,
+        services: true,
+        suggestions: true,
+        remarks: true
       };
       function shouldWide(f, raw) {
         if (WIDE_KEYS[f.key]) return true;

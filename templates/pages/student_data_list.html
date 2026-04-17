@@ -27,15 +27,20 @@
       <button type="button" class="button secondary" id="sd-search-btn">查询</button>
       <button type="button" class="button secondary" id="sd-refresh-btn">重置</button>
       <div class="sd-toolbar-actions">
-        <button type="button" class="button secondary" id="sd-csv-template-btn">下载导入模板</button>
         <label class="sd-bulk-label">
-          <span class="button secondary" style="cursor: pointer; display: inline-block;">批量导入</span>
-          <input type="file" id="sd-bulk-file" accept=".csv,.json,text/csv,application/json" hidden />
+          <span class="button secondary" style="cursor: pointer; display: inline-block;">智能导入</span>
+          <input
+            type="file"
+            id="sd-import-ai-file"
+            accept=".csv,.xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/csv"
+            hidden
+          />
         </label>
       </div>
     </div>
     <p class="muted" style="margin: 12px 0 0; font-size: 13px;">
-      可先下载 CSV 模板（表头与系统字段一致）；批量导入使用 UTF-8 编码的 .csv / .json，首行为表头，亦支持 姓名、学号、数据内容 等简写列名。
+      上传任意表头的 UTF-8 CSV 或 Excel（.xlsx）即可；服务端按批调用大模型将列与行映射到学生档案字段，文件中没有的字段会留空。每批处理 10
+      条以降低超时与丢字段风险，行数较多时请耐心等待。
     </p>
     <div id="sd-bulk-message" hidden></div>
     <div id="sd-list-mount" class="table-scroll" style="margin-top: 16px;"></div>

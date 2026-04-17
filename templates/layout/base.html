@@ -1,9 +1,24 @@
 <!doctype html>
-<html lang="zh-CN">
+<html lang="zh-CN" data-theme="dark">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta id="meta-theme-color" name="theme-color" content="#0f2744" />
   <title>{% block title %}报告生成平台{% endblock %}</title>
+  <script>
+    (function () {
+      try {
+        var t = localStorage.getItem("ppt-report-theme");
+        if (t === "light" || t === "dark") {
+          document.documentElement.setAttribute("data-theme", t);
+          var m = document.getElementById("meta-theme-color");
+          if (m) m.setAttribute("content", t === "light" ? "#ffffff" : "#0f2744");
+        }
+      } catch (e) {}
+    })();
+  </script>
+  <link rel="icon" href="{{ url_for('static', filename='favicon.svg') }}" type="image/svg+xml" />
+  <link rel="apple-touch-icon" href="{{ url_for('static', filename='favicon.svg') }}" />
   <link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}" />
   {% block head_extra %}{% endblock %}
 </head>
@@ -16,6 +31,7 @@
       </div>
     </main>
   </div>
+  <script src="{{ url_for('static', filename='js/app/theme.js') }}" defer></script>
   {% block scripts %}{% endblock %}
 </body>
 </html>

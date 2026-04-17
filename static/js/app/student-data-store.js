@@ -14,9 +14,12 @@
         { key: "school", label: "就读院校" },
         { key: "major", label: "专业方向" },
         { key: "gradeLevel", label: "年级" },
+        { key: "gradeIntake", label: "年级/入学时间" },
         { key: "currentTerm", label: "当前学期" },
+        { key: "product", label: "产品" },
         { key: "serviceStart", label: "服务开始日期" },
         { key: "plannerTeacher", label: "规划老师" },
+        { key: "advisorTeacher", label: "教服老师" },
         { key: "studentId", label: "学号", detailHidden: true },
         { key: "className", label: "班级", detailHidden: true },
         { key: "email", label: "邮箱", detailHidden: true },
@@ -28,14 +31,24 @@
       id: "learning",
       title: "学习画像",
       fields: [
-        { key: "strongSubjects", label: "优势科目" },
-        { key: "intlScores", label: "国际成绩" },
-        { key: "studyIntent", label: "升学意向" },
-        { key: "careerIntent", label: "就业意向" },
-        { key: "interestSubjects", label: "兴趣科目" },
-        { key: "longTermPlan", label: "长期规划", fullWidth: true },
-        { key: "learningStyle", label: "擅长学习方式" },
-        { key: "weakAreas", label: "薄弱环节", fullWidth: true }
+        { key: "strength_subjects", label: "擅长科目" },
+        { key: "scores", label: "语言/国际成绩" },
+        { key: "learning_good", label: "擅长学习形式" },
+        { key: "learning_weak", label: "不擅长学习形式", fullWidth: true },
+        { key: "interests", label: "兴趣方向" },
+        { key: "study_goal", label: "升学意向" },
+        { key: "career_goal", label: "就业意向" },
+        { key: "long_goal", label: "长远目标", fullWidth: true },
+        { key: "degree", label: "学位" },
+        { key: "duration", label: "学制" },
+        { key: "credits", label: "学分要求", fullWidth: true },
+        { key: "course_rule", label: "课程要求", fullWidth: true },
+        { key: "gpa_rule", label: "GPA要求", fullWidth: true },
+        { key: "selection_rule", label: "选课规则", fullWidth: true },
+        { key: "recommended_courses", label: "推荐课程", fullWidth: true },
+        { key: "course_notes", label: "课程说明", fullWidth: true },
+        { key: "term_plan", label: "学期规划", fullWidth: true },
+        { key: "future_plan", label: "后续规划", fullWidth: true }
       ]
     },
     {
@@ -45,8 +58,8 @@
         { key: "totalHours", label: "总课时" },
         { key: "usedHours", label: "已用课时" },
         { key: "remainingHours", label: "剩余课时" },
-        { key: "tutorSubjects", label: "辅导科目" },
-        { key: "previewSubjects", label: "预习科目" },
+        { key: "prep_courses", label: "预习课程" },
+        { key: "tutoring_courses", label: "同步辅导课程" },
         { key: "skillDirection", label: "技能提升方向" },
         { key: "skillDescription", label: "技能提升描述", fullWidth: true }
       ]
@@ -59,6 +72,33 @@
         { key: "courseFeedback", label: "课程反馈与建议" },
         { key: "shortTermAdvice", label: "短期学习建议" },
         { key: "longTermDevelopment", label: "长期发展规划" }
+      ]
+    },
+    {
+      id: "term_summary",
+      title: "学期总结/结单",
+      fields: [
+        { key: "student_summary", label: "学生情况", fullWidth: true },
+        { key: "school_ddl", label: "校方DDL" },
+        { key: "first_class_time", label: "首课时间" },
+        { key: "first_class_note", label: "首课记录", fullWidth: true },
+        { key: "summer_work", label: "暑期辅导" },
+        { key: "term_work", label: "学期辅导" },
+        { key: "recorded_courses", label: "录播完成" },
+        { key: "grades", label: "成绩明细", fullWidth: true },
+        { key: "gpa", label: "GPA" },
+        { key: "target_gpa", label: "目标GPA" },
+        { key: "final_score", label: "最终成绩" },
+        { key: "services", label: "服务内容", fullWidth: true },
+        { key: "service_count", label: "服务次数" },
+        { key: "class_count", label: "课程次数" },
+        { key: "total_duration", label: "总时长" },
+        { key: "avg_duration", label: "平均课时" },
+        { key: "communication", label: "沟通频次" },
+        { key: "next_goal", label: "下阶段目标" },
+        { key: "risk_courses", label: "风险科目" },
+        { key: "suggestions", label: "下阶段建议", fullWidth: true },
+        { key: "remarks", label: "备注", fullWidth: true }
       ]
     }
   ];
@@ -131,140 +171,6 @@
     return body;
   }
 
-  function normKey(h) {
-    return String(h || "")
-      .replace(/\ufeff/g, "")
-      .replace(/\s/g, "")
-      .toLowerCase();
-  }
-
-  function cellValue(row, aliases) {
-    for (var rk in row) {
-      if (!Object.prototype.hasOwnProperty.call(row, rk)) continue;
-      var nk = normKey(rk);
-      for (var i = 0; i < aliases.length; i++) {
-        if (normKey(aliases[i]) === nk) return row[rk];
-      }
-    }
-    return "";
-  }
-
-  function rowToRecord(row) {
-    var rec = {
-      name: cellValue(row, ["姓名", "name", "学生姓名"]),
-      studentId: cellValue(row, ["学号", "studentid", "student_id", "number"]),
-      className: cellValue(row, ["班级", "classname", "class", "班级名称"]),
-      email: cellValue(row, ["邮箱", "email", "e-mail"]),
-      phone: cellValue(row, ["手机", "电话", "phone", "tel", "mobile"]),
-      remark: cellValue(row, ["备注", "remark", "note", "说明"]),
-      content: cellValue(row, ["数据内容", "content", "data", "正文", "生成数据", "ppt数据", "材料"])
-    };
-    if (row && typeof row.profile === "object" && row.profile !== null) {
-      rec.profile = row.profile;
-    } else {
-      var profile = { basic: {}, learning: {}, hours: {}, guidance: {} };
-      PROFILE_SPEC.forEach(function (dim) {
-        dim.fields.forEach(function (f) {
-          var v = cellValue(row, [f.label, f.key]);
-          if (_normStr(v)) profile[dim.id][f.key] = _normStr(v);
-        });
-      });
-      rec.profile = profile;
-    }
-    return normalizeRecord(rec);
-  }
-
-  function escapeCsvField(s) {
-    var t = String(s == null ? "" : s);
-    if (/[",\n\r]/.test(t)) {
-      return '"' + t.replace(/"/g, '""') + '"';
-    }
-    return t;
-  }
-
-  function buildImportTemplateCSV() {
-    var headers = [];
-    PROFILE_SPEC.forEach(function (dim) {
-      dim.fields.forEach(function (f) {
-        headers.push(f.label);
-      });
-    });
-    headers.push("数据内容");
-    return headers.map(escapeCsvField).join(",") + "\r\n";
-  }
-
-  function downloadImportTemplate() {
-    var csv = "\ufeff" + buildImportTemplateCSV();
-    var blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
-    var url = URL.createObjectURL(blob);
-    var a = document.createElement("a");
-    a.href = url;
-    a.download = "学生数据导入模板.csv";
-    a.rel = "noopener";
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    setTimeout(function () {
-      URL.revokeObjectURL(url);
-    }, 1500);
-  }
-
-  function splitCSVLine(line) {
-    var result = [];
-    var cur = "";
-    var inQ = false;
-    for (var i = 0; i < line.length; i++) {
-      var c = line[i];
-      if (c === '"') {
-        if (inQ && line[i + 1] === '"') {
-          cur += '"';
-          i++;
-        } else {
-          inQ = !inQ;
-        }
-      } else if ((c === "," && !inQ) || (c === "\t" && !inQ)) {
-        result.push(cur);
-        cur = "";
-      } else {
-        cur += c;
-      }
-    }
-    result.push(cur);
-    return result;
-  }
-
-  function parseCSV(text) {
-    var lines = String(text || "")
-      .split(/\r?\n/)
-      .map(function (l) { return l.replace(/\s+$/, ""); })
-      .filter(function (l) { return l.length > 0; });
-    if (!lines.length) return [];
-    var headers = splitCSVLine(lines[0]);
-    var rows = [];
-    for (var i = 1; i < lines.length; i++) {
-      var cols = splitCSVLine(lines[i]);
-      var row = {};
-      headers.forEach(function (h, j) {
-        row[String(h).trim()] = cols[j] != null ? String(cols[j]).trim() : "";
-      });
-      rows.push(row);
-    }
-    return rows;
-  }
-
-  function parseJSONImport(text) {
-    var data;
-    try {
-      data = JSON.parse(String(text || ""));
-    } catch (_e) {
-      data = null;
-    }
-    if (data == null) return [];
-    if (Array.isArray(data)) return data;
-    if (typeof data === "object") return [data];
-    return [];
-  }
-
   var Store = {
     list: async function (query) {
       var q = _normStr(query);
@@ -320,26 +226,24 @@
       return data;
     },
 
-    importFromText: async function (text, kind) {
-      var rows = kind === "json" ? parseJSONImport(text) : parseCSV(text).map(rowToRecord);
-      var imported = 0;
-      var skipped = 0;
-      var errors = [];
-      for (var i = 0; i < rows.length; i++) {
-        var raw = kind === "json" ? rowToRecord(rows[i]) : normalizeRecord(rows[i]);
-        if (!raw.name && !raw.studentId && !raw.content) {
-          skipped++;
-          continue;
-        }
-        raw.id = "";
-        try {
-          await Store.save(raw);
-          imported++;
-        } catch (e) {
-          errors.push("第 " + (i + 1) + " 行：" + (e.message || String(e)));
-        }
+    importAiFile: async function (file) {
+      var fd = new FormData();
+      fd.append("file", file);
+      var res = await fetch(API_BASE + "/import-ai", {
+        method: "POST",
+        body: fd
+      });
+      var body = null;
+      try {
+        body = await res.json();
+      } catch (_e) {
+        body = null;
       }
-      return { imported: imported, skipped: skipped, errors: errors };
+      if (!res.ok || !body || body.ok === false) {
+        var errMsg = (body && body.error) || ("请求失败（" + res.status + "）");
+        throw new Error(errMsg);
+      }
+      return body;
     },
 
     filterByQuery: function (records, q) {
@@ -369,9 +273,7 @@
       });
     },
 
-    mergeDisplayProfile: mergeDisplayProfile,
-
-    downloadImportTemplate: downloadImportTemplate
+    mergeDisplayProfile: mergeDisplayProfile
   };
 
   global.StudentDataStore = Store;
