@@ -1195,10 +1195,19 @@ pre {
 
 .generate-ref-block--pick {
   min-width: 0;
-  padding: 10px 12px;
-  border-radius: 10px;
-  background: #f8fafc;
+  padding: 14px 14px 16px;
+  border-radius: 12px;
+  background: var(--card);
   border: 1px solid var(--line);
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+}
+
+.generate-ref-anchor .generate-ref-block--pick > .generate-ref-block-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--subtle);
+  letter-spacing: 0.02em;
+  margin-bottom: 10px;
 }
 
 .gen-ref-inline-placeholder {
@@ -1518,6 +1527,10 @@ pre {
   margin-bottom: 0;
 }
 
+.gen-ref-toolbar--solo {
+  width: 100%;
+}
+
 .gen-ref-toolbar-row {
   display: flex;
   flex-wrap: wrap;
@@ -1525,40 +1538,86 @@ pre {
   align-items: center;
 }
 
-/* 文档生成：数据选择（与主色蓝区分） */
+/* 文档生成：报告类型 / 学生数据 — 全宽字段式按钮，弱化高饱和 pill */
 .button.gen-btn-pick {
-  font-weight: 700;
-  border: 1px solid transparent;
-  box-shadow: none;
+  width: 100%;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 14px;
+  font-weight: 600;
+  font-size: 14px;
+  line-height: 1.35;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  background: var(--card);
+  color: var(--text);
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.05);
+  text-align: left;
   transform: none;
+  transition:
+    background 0.15s ease,
+    border-color 0.15s ease,
+    box-shadow 0.15s ease;
 }
 
 .button.gen-btn-pick:hover {
-  transform: translateY(-1px);
-  filter: brightness(0.97);
-  color: inherit;
+  transform: none;
+  filter: none;
+  background: #f8fafc;
+  border-color: var(--line-strong);
+  color: var(--text);
 }
 
-.button.gen-btn-pick--template {
-  background: linear-gradient(180deg, #f5f3ff 0%, #ede9fe 100%);
-  color: #5b21b6;
-  border-color: #c4b5fd;
+.button.gen-btn-pick:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
 }
 
-.button.gen-btn-pick--template:hover {
-  background: linear-gradient(180deg, #ede9fe 0%, #ddd6fe 100%);
-  color: #4c1d95;
+.gen-btn-pick__lead {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
 }
 
-.button.gen-btn-pick--student {
-  background: linear-gradient(180deg, #ecfdf5 0%, #d1fae5 100%);
-  color: #065f46;
-  border-color: #6ee7b7;
+.gen-btn-pick__icon {
+  flex-shrink: 0;
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
-.button.gen-btn-pick--student:hover {
-  background: linear-gradient(180deg, #d1fae5 0%, #a7f3d0 100%);
-  color: #064e3b;
+.gen-btn-pick__icon svg {
+  width: 22px;
+  height: 22px;
+}
+
+.gen-btn-pick__icon--template {
+  background: rgba(124, 58, 237, 0.09);
+  color: #6d28d9;
+}
+
+.gen-btn-pick__icon--student {
+  background: rgba(5, 150, 105, 0.1);
+  color: #047857;
+}
+
+.gen-btn-pick__label {
+  font-weight: 600;
+  letter-spacing: 0.01em;
+}
+
+.gen-btn-pick__hint {
+  flex-shrink: 0;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--subtle);
 }
 
 /* 章节范围：中性灰描边，避免与主按钮同色 */
@@ -1595,9 +1654,7 @@ pre {
   color: #334155;
 }
 
-/* 盖过全局 button:hover 的主色，避免四个工具按钮悬停变蓝 */
-.button.gen-btn-pick--template:hover,
-.button.gen-btn-pick--student:hover,
+/* 盖过全局 button:hover 的主色 */
 .button.gen-btn-chapter--all:hover,
 .button.gen-btn-chapter--none:hover {
   background-image: none;
@@ -1658,37 +1715,37 @@ pre {
   padding: 8px 10px 8px 8px;
   border-radius: 12px;
   border: 1px solid var(--line);
-  background: #fff;
+  background: var(--card);
   box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
 }
 
 .gen-ref-chip--template {
-  border-color: #ddd6fe;
-  background: #faf5ff;
+  border-color: rgba(124, 58, 237, 0.22);
+  background: rgba(124, 58, 237, 0.04);
 }
 
 .gen-ref-chip--student {
-  border-color: #a7f3d0;
-  background: #ecfdf5;
+  border-color: rgba(5, 150, 105, 0.22);
+  background: rgba(5, 150, 105, 0.05);
 }
 
 .gen-ref-chip-badge {
   flex-shrink: 0;
   font-size: 11px;
-  font-weight: 800;
+  font-weight: 700;
   padding: 4px 8px;
   border-radius: 8px;
   letter-spacing: 0.02em;
 }
 
 .gen-ref-chip--template .gen-ref-chip-badge {
-  background: #ede9fe;
+  background: rgba(124, 58, 237, 0.12);
   color: #5b21b6;
 }
 
 .gen-ref-chip--student .gen-ref-chip-badge {
-  background: #d1fae5;
-  color: #065f46;
+  background: rgba(5, 150, 105, 0.14);
+  color: #047857;
 }
 
 .gen-ref-chip-main {
