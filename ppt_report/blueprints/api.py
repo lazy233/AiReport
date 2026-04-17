@@ -9,7 +9,7 @@ import uuid
 from typing import Any
 from pathlib import Path
 
-from flask import Blueprint, jsonify, request, send_file
+from flask import Blueprint, current_app, jsonify, request, send_file
 from pptx import Presentation
 from werkzeug.utils import secure_filename
 
@@ -115,6 +115,7 @@ def api_student_data_create():
     except ValueError as exc:
         return jsonify({"ok": False, "error": str(exc)}), 400
     except Exception:
+        current_app.logger.exception("POST /api/student-data save_student_record failed")
         return jsonify({"ok": False, "error": "保存失败，请稍后重试。"}), 500
     return jsonify({"ok": True, "id": record_id, "item": item})
 
@@ -128,6 +129,10 @@ def api_student_data_update(record_id: str):
     except ValueError as exc:
         return jsonify({"ok": False, "error": str(exc)}), 400
     except Exception:
+        current_app.logger.exception(
+            "PUT /api/student-data/%s save_student_record failed",
+            (record_id or "").strip(),
+        )
         return jsonify({"ok": False, "error": "保存失败，请稍后重试。"}), 500
     return jsonify({"ok": True, "id": saved_id, "item": item})
 
