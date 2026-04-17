@@ -20,6 +20,8 @@ _PLACEHOLDER_RE = re.compile(r"\{\{\s*([a-zA-Z0-9_.\-]+)\s*\}\}")
 # 标签列可较长（如「平均每节课时长」「Classin 沟通频次」）
 _KV_LINE_RE = re.compile(r"^\s*([^:：]{1,80})\s*[:：]\s*(.*?)\s*$")
 _LABEL_ONLY_COLON_RE = re.compile(r"^\s*([^:：]{1,80})\s*[:：]\s*$")
+# 宽松：标签内可含冒号以外的任意首段，值段至少 1 字（避免把「对接顾问/BD：」判错）
+_KV_RELAXED_RE = re.compile(r"^(.+?)[:：]\s*(.+)\s*$")
 
 
 def _normalize_key(s: str) -> str:
@@ -61,7 +63,7 @@ def _build_student_value_map(record: dict[str, Any]) -> tuple[dict[str, str], di
         "className": str(basic.get("className") or "").strip(),
         "product": str(basic.get("product") or "").strip(),
         "major": _first_nonempty(basic, "major", "majorName")
-        or str(learning.get("majorDirection") or learning.get("major") or "").strip(),
+        or str(learning.get("majorDirection") or learning.get("goalMajor") or learning.get("major") or "").strip(),
         "majorDirection": str(learning.get("majorDirection") or "").strip(),
         "transferDate": _first_nonempty(
             basic,
@@ -71,6 +73,8 @@ def _build_student_value_map(record: dict[str, Any]) -> tuple[dict[str, str], di
             "switchCaseDate",
         )
         or str(basic.get("serviceStart") or basic.get("serviceStartDate") or "").strip(),
+        # 与转案日期同源，供别名「对接日期」等推断
+        "serviceStart": str(basic.get("serviceStart") or basic.get("serviceStartDate") or "").strip(),
         "goalSchool": str(learning.get("goalSchool") or "").strip(),
         "goalMajor": str(learning.get("goalMajor") or "").strip(),
         "strength_subjects": _first_nonempty(
@@ -153,6 +157,8 @@ def _build_student_value_map(record: dict[str, Any]) -> tuple[dict[str, str], di
         "Classin 沟通频次": "communication",
         "包课课时总统计": "totalHours",
         "年级/入学时间": "gradeIntake",
+        "对接日期": "transferDate",
+        "服务开始日期": "serviceStart",
         "擅长科目": "strength_subjects",
         "语言/国际成绩": "scores",
         "擅长学习形式": "learning_good",
@@ -268,10 +274,37 @@ def _plain_two_col_map() -> dict[str, str]:
 
 
 def _right_is_placeholder(s: str) -> bool:
-    t = (s or "").strip()
+    t = (s or "").replace("\u3000", " ").replace("\xa0", " ").strip()
     if not t:
         return True
-    return t in ("/", "／", "—", "-", "...", "…", "–")
+    return t in ("/", "／", "—", "-", "...", "…", "–", "－")
+
+
+def _cell_suggest_llm_infer(text: str) -> bool:
+    """空单元格、整格仅为占位符、或仅有「标签：」无值时，提示大模型结合档案推理填写。"""
+    s = (text or "").strip()
+    if not s:
+        return True
+    if _right_is_placeholder(s):
+        return True
+    fl = (s.split("\n")[0] or "").strip()
+    if _LABEL_ONLY_COLON_RE.match(fl):
+        return True
+    return False
+
+
+def _match_kv_first_line(first_line: str) -> tuple[str, str] | None:
+    """解析首行「标签：值」，先严格再宽松。"""
+    s = (first_line or "").strip()
+    if not s:
+        return None
+    m = _KV_LINE_RE.match(s)
+    if m:
+        return (m.group(1).strip(), (m.group(2) or "").strip())
+    m2 = _KV_RELAXED_RE.match(s)
+    if m2:
+        return (m2.group(1).strip(), (m2.group(2) or "").strip())
+    return None
 
 
 def _fix_two_column_rows(doc: Document, values: dict[str, str], aliases: dict[str, str]) -> int:
@@ -279,30 +312,45 @@ def _fix_two_column_rows(doc: Document, values: dict[str, str], aliases: dict[st
     将误写在左格的「标签：值」拆成左「标签：」+ 右「值」；
     左格仅有「标签：」时把 value_map 填到右格；
     左格为无冒号标题且右格为占位时，按别名/包课行映射填右格。
+
+    使用 table.cell(row,col) 按网格取格；合并单元格时两格可能为同一 _tc，无法在物理上拆成两格，
+    此时改为左格内「标签：\\n值」排版，避免与「误跳过」导致永不修复。
     """
     plain = _plain_two_col_map()
     changed = 0
     for table in doc.tables:
-        for row in table.rows:
-            if len(row.cells) < 2:
+        nrows = len(table.rows)
+        ncols = len(table.columns)
+        if ncols < 2:
+            continue
+        for ri in range(nrows):
+            try:
+                left = table.cell(ri, 0)
+                right = table.cell(ri, 1)
+            except (IndexError, ValueError):
                 continue
-            left, right = row.cells[0], row.cells[1]
-            if left._tc is right._tc:
-                continue
+            merged_same = left._tc is right._tc
             lt_raw = left.text or ""
             rt_raw = right.text or ""
             first_line = (lt_raw.split("\n")[0] or "").strip()
 
-            m = _KV_LINE_RE.match(first_line)
-            if m:
-                lab = (m.group(1) or "").strip()
-                val = (m.group(2) or "").strip()
+            kv = _match_kv_first_line(first_line)
+            if kv:
+                lab, val = kv[0], kv[1]
                 if val and _right_is_placeholder(rt_raw):
                     sep = "：" if "：" in first_line else ":"
                     lines = lt_raw.split("\n")
                     lines[0] = f"{lab}{sep}"
-                    set_table_cell_text_preserve_style(left, "\n".join(lines))
-                    set_table_cell_text_preserve_style(right, val)
+                    body = "\n".join(lines).strip()
+                    if merged_same:
+                        extra = "\n".join(lines[1:]) if len(lines) > 1 else ""
+                        pack = f"{lab}{sep}\n{val}"
+                        if extra:
+                            pack += "\n" + extra
+                        set_table_cell_text_preserve_style(left, pack)
+                    else:
+                        set_table_cell_text_preserve_style(left, body)
+                        set_table_cell_text_preserve_style(right, val)
                     changed += 1
                     continue
 
@@ -313,7 +361,10 @@ def _fix_two_column_rows(doc: Document, values: dict[str, str], aliases: dict[st
                 if key_name:
                     nv = str(values.get(key_name, "") or "").strip()
                     if nv:
-                        set_table_cell_text_preserve_style(right, nv)
+                        if merged_same:
+                            set_table_cell_text_preserve_style(left, f"{first_line.strip()}\n{nv}")
+                        else:
+                            set_table_cell_text_preserve_style(right, nv)
                         changed += 1
                         continue
 
@@ -328,32 +379,63 @@ def _fix_two_column_rows(doc: Document, values: dict[str, str], aliases: dict[st
                 if vk:
                     nv = str(values.get(vk, "") or "").strip()
                     if nv:
-                        set_table_cell_text_preserve_style(right, nv)
+                        if merged_same:
+                            set_table_cell_text_preserve_style(
+                                left, f"{first_line.strip()}\n{nv}",
+                            )
+                        else:
+                            set_table_cell_text_preserve_style(right, nv)
                         changed += 1
                         continue
                 key_name2 = aliases.get(nk2)
                 if key_name2:
                     nv2 = str(values.get(key_name2, "") or "").strip()
                     if nv2:
-                        set_table_cell_text_preserve_style(right, nv2)
+                        if merged_same:
+                            set_table_cell_text_preserve_style(
+                                left, f"{first_line.strip()}\n{nv2}",
+                            )
+                        else:
+                            set_table_cell_text_preserve_style(right, nv2)
                         changed += 1
     return changed
 
 
+def _fix_two_column_rows_until_stable(
+    doc: Document,
+    values: dict[str, str],
+    aliases: dict[str, str],
+    *,
+    max_rounds: int = 8,
+) -> int:
+    """合并格写入后可能影响相邻行，多轮直到无变化。"""
+    total = 0
+    for _ in range(max_rounds):
+        n = _fix_two_column_rows(doc, values, aliases)
+        total += n
+        if n == 0:
+            break
+    return total
+
+
 def _should_allow_llm_cell_update(original: str) -> bool:
     """
-    仅在这些情况下允许用大模型结果覆盖整格原文：
-    - 含 {{placeholder}}；
-    - 或首行符合「标签: 值」结构（便于按学生数据改写）；
-    - 或较长/多段叙述（需模型润色或补全）。
-
-    无冒号、无占位符的短固定文案（如单独一行「李老师」）禁止整格覆盖，避免模型误写。
+    为 True 时允许用大模型返回覆盖整格原文。
+    空单元格、整格仅为 / 等占位、或仅有「标签：」无值时也必须为 True，否则模型无法推理填入内容。
+    无冒号、无占位符的短固定文案（如单独「李老师」）为 False，避免误覆盖。
     """
     o = original or ""
-    if "{{" in o:
+    st = o.strip()
+    if not st:
+        return True
+    if _right_is_placeholder(st):
         return True
     first = o.split("\n", 1)[0].strip()
-    if _KV_LINE_RE.match(first):
+    if _LABEL_ONLY_COLON_RE.match(first):
+        return True
+    if "{{" in o:
+        return True
+    if _KV_LINE_RE.match(first) or _match_kv_first_line(first):
         return True
     if len(o) > 320 or o.count("\n") >= 2:
         return True
@@ -367,13 +449,15 @@ def _extract_table_cells(doc: Document) -> tuple[list[dict[str, Any]], int]:
         table_count += 1
         for r_idx, row in enumerate(table.rows):
             for c_idx, cell in enumerate(row.cells):
+                otxt = (cell.text or "").strip()
                 cells.append(
                     {
                         "cell_id": f"t{t_idx}_r{r_idx}_c{c_idx}",
                         "table_index": t_idx,
                         "row_index": r_idx,
                         "col_index": c_idx,
-                        "original_text": (cell.text or "").strip(),
+                        "original_text": otxt,
+                        "suggest_infer": _cell_suggest_llm_infer(otxt),
                     },
                 )
     return cells, table_count
@@ -404,6 +488,8 @@ def _llm_fill_table_cells(
         "左格只保留「标签：」标签本身或单独标题，具体数字与正文必须写在右格（col_index 较大的单元格）；"
         "禁止把「课程次数：1」这类「标签+值」整段只写在左格而右格为空。"
         "转案日期、专业、委托产品、对接顾问等：若 value_map 无键名，可从 profile.basic / 全量 student_record 按常见语义推断并填写；勿留空。"
+        "若 table_cells[].suggest_infer 为 true：表示该格为空、仅占位或仅有「标签：」无值，你必须结合 student_record / profile / value_map 推理可填内容；"
+        "能从其他字段合理推出则填写具体文字，确实无依据时可写「—」或一两字说明，不要留空占位。"
         "不要输出解释，只输出 JSON。"
     )
     payload = {
@@ -428,7 +514,8 @@ def _llm_fill_table_cells(
         "5) 全文保持中文风格，不新增无关内容；\n"
         "6) 对无冒号、无{{}}的短行固定文案（如模板里已写好的教服老师姓名）必须保持原样；\n"
         "7) 双列表格同行左右两格分工：左标签、右数值或说明；\n"
-        "8) 尽量补全转案日期、专业、委托产品、对接顾问等有迹可循的字段。\n\n"
+        "8) 尽量补全转案日期、专业、委托产品、对接顾问等有迹可循的字段；\n"
+        "9) 凡 suggest_infer 为 true 的单元格必须输出推理后的 final_text（不得与原文一样是空或仅「/」）。\n\n"
         f"输入数据：{json.dumps(payload, ensure_ascii=False)}"
     )
     response = requests.post(
@@ -510,7 +597,7 @@ def fill_word_table_for_student(
                     set_table_cell_text_preserve_style(cell, new_t)
                     deterministic_cells += 1
 
-    two_column_row_fixes = _fix_two_column_rows(doc, values, aliases)
+    two_column_row_fixes = _fix_two_column_rows_until_stable(doc, values, aliases)
 
     cells_meta, table_count = _extract_table_cells(doc)
 
@@ -546,7 +633,7 @@ def fill_word_table_for_student(
                     kv_rewrite_hits += 1 if _KV_LINE_RE.match(original or "") else 0
                     set_table_cell_text_preserve_style(cell, updated)
 
-    two_column_row_fixes += _fix_two_column_rows(doc, values, aliases)
+    two_column_row_fixes += _fix_two_column_rows_until_stable(doc, values, aliases)
 
     if output_path is None:
         out = config.FILLED_EXPORT_DIR / f"{tid}_filled.docx"
