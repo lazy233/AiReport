@@ -1152,7 +1152,8 @@ pre {
   border: 1px solid var(--line);
   background: #fff;
   box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
-  overflow: hidden;
+  /* 不可 hidden，否则会裁切模板选择下拉面板的 overflow */
+  overflow: visible;
 }
 
 .generate-ref-card-inner {
@@ -1190,6 +1191,11 @@ pre {
 .gen-task-picker {
   position: relative;
   margin-top: 2px;
+  z-index: 1;
+}
+
+.gen-task-picker--open {
+  z-index: 50;
 }
 
 .gen-task-picker-trigger {
@@ -1297,7 +1303,7 @@ pre {
   left: 0;
   right: 0;
   top: calc(100% + 6px);
-  z-index: 40;
+  z-index: 100;
   max-height: min(320px, 70vh);
   overflow-y: auto;
   border-radius: 10px;
