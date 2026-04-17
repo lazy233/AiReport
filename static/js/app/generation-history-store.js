@@ -3,12 +3,15 @@
  */
 (function (global) {
   /**
-   * @returns {Promise<{ dbEnabled: boolean, items: Array<{id: string, taskId: string, topic: string, createdAt: string, slideCount: number}> }>}
+   * @param {string} [query]
+   * @param {number} [page] 从 1 开始，每页 10 条（由服务端固定）
+   * @returns {Promise<{ dbEnabled: boolean, items: Array<{id: string, taskId: string, topic: string, createdAt: string, slideCount: number}>, total: number, page: number, perPage: number, totalPages: number }>}
    */
-  async function fetchList(query) {
+  async function fetchList(query, page) {
     var q = (query || "").trim();
-    var url = "/api/generation_history";
-    if (q) url += "?q=" + encodeURIComponent(q);
+    var p = Math.max(1, parseInt(String(page == null ? 1 : page), 10) || 1);
+    var url = "/api/generation_history?page=" + encodeURIComponent(String(p));
+    if (q) url += "&q=" + encodeURIComponent(q);
     var res = await fetch(url);
     var j = await res.json().catch(function () {
       return {};
@@ -19,6 +22,10 @@
     return {
       dbEnabled: !!j.db_enabled,
       items: Array.isArray(j.items) ? j.items : [],
+      total: Number(j.total || 0),
+      page: Number(j.page || 1),
+      perPage: Number(j.per_page || 10),
+      totalPages: Number(j.total_pages || 0),
     };
   }
 

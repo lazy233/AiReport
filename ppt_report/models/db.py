@@ -708,14 +708,13 @@ def persist_generation_history(
         return None
 
 
-def list_generation_history_summaries(query: str = "", limit: int = 200) -> list[dict[str, object]]:
-    """生成历史列表摘要（不含 result JSON），支持关键词检索，按时间倒序。"""
+def count_generation_history_summaries(query: str = "") -> int:
+    """与 list_generation_history_summaries 相同筛选条件下的记录总数。"""
     if not _SessionLocal:
-        return []
-    lim = max(1, min(int(limit), 2000))
+        return 0
     q = _norm_str(query)
     with _SessionLocal() as session:
-        stmt = select(GenerationHistory).order_by(GenerationHistory.created_at.desc()).limit(lim)
+        stmt = select(func.count()).select_from(GenerationHistory)
         if q:
             like = f"%{q}%"
             stmt = stmt.where(
@@ -724,6 +723,32 @@ def list_generation_history_summaries(query: str = "", limit: int = 200) -> list
                     GenerationHistory.task_id.ilike(like),
                 ),
             )
+        n = session.scalar(stmt)
+        return int(n or 0)
+
+
+def list_generation_history_summaries(
+    query: str = "",
+    limit: int = 200,
+    offset: int = 0,
+) -> list[dict[str, object]]:
+    """生成历史列表摘要（不含 result JSON），支持关键词检索，按时间倒序。"""
+    if not _SessionLocal:
+        return []
+    lim = max(1, min(int(limit), 2000))
+    off = max(0, int(offset))
+    q = _norm_str(query)
+    with _SessionLocal() as session:
+        stmt = select(GenerationHistory)
+        if q:
+            like = f"%{q}%"
+            stmt = stmt.where(
+                or_(
+                    GenerationHistory.topic.ilike(like),
+                    GenerationHistory.task_id.ilike(like),
+                ),
+            )
+        stmt = stmt.order_by(GenerationHistory.created_at.desc()).offset(off).limit(lim)
         rows = session.scalars(stmt).all()
     out: list[dict[str, object]] = []
     for r in rows:

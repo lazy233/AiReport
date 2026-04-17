@@ -344,11 +344,34 @@ def api_presentation_for_generate(task_id: str):
 @api_bp.get("/generation_history")
 def api_generation_history_list():
     query = (request.args.get("q") or "").strip()
+    per_page = 10
+    page = request.args.get("page", type=int)
+    if page is None:
+        page = 1
+    page = max(1, int(page))
+    total = db_mod.count_generation_history_summaries(query=query)
+    if total == 0:
+        page = 1
+        offset = 0
+        total_pages = 0
+    else:
+        total_pages = (total + per_page - 1) // per_page
+        page = min(page, total_pages)
+        offset = (page - 1) * per_page
+    items = db_mod.list_generation_history_summaries(
+        query=query,
+        limit=per_page,
+        offset=offset,
+    )
     return jsonify(
         {
             "ok": True,
             "db_enabled": db_mod.db_enabled(),
-            "items": db_mod.list_generation_history_summaries(query=query),
+            "items": items,
+            "total": total,
+            "page": page,
+            "per_page": per_page,
+            "total_pages": total_pages,
         },
     )
 

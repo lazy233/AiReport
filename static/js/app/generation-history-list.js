@@ -3,6 +3,7 @@
  */
 (function () {
   var _currentQuery = "";
+  var _currentPage = 1;
 
   function esc(s) {
     var d = document.createElement("div");
@@ -33,15 +34,21 @@
     mount.innerHTML = '<p class="muted">加载中…</p>';
 
     try {
-      var pack = await GenerationHistoryStore.fetchList(_currentQuery);
+      var pack = await GenerationHistoryStore.fetchList(_currentQuery, _currentPage);
       if (!pack.dbEnabled) {
         mount.innerHTML =
           '<p class="muted">数据库未启用，无法加载服务端历史。请配置 DATABASE_URL 并重启应用。</p>';
         return;
       }
+      _currentPage = pack.page || _currentPage;
       var items = pack.items || [];
+      var total = pack.total != null ? pack.total : 0;
+      var totalPages = pack.totalPages != null ? pack.totalPages : 0;
       if (!items.length) {
-        mount.innerHTML = '<p class="muted">' + (_currentQuery ? "未找到匹配记录。" : "暂无生成记录。") + "</p>";
+        mount.innerHTML =
+          '<p class="muted">' +
+            (_currentQuery ? "未找到匹配记录。" : total === 0 ? "暂无生成记录。" : "暂无本页数据。") +
+          "</p>";
         return;
       }
 
@@ -74,10 +81,35 @@
         })
         .join("");
 
+      var pg = _currentPage;
+      var prevDis = pg <= 1 ? " disabled" : "";
+      var nextDis = totalPages <= 0 || pg >= totalPages ? " disabled" : "";
+      var pager =
+        '<div class="gh-pagination">' +
+        '<span class="gh-pagination-meta muted">共 ' +
+        esc(String(total)) +
+        " 条 · 每页 " +
+        esc(String(pack.perPage || 10)) +
+        " 条</span>" +
+        '<div class="gh-pagination-actions">' +
+        '<button type="button" class="button secondary js-gh-page-prev"' +
+        prevDis +
+        ">上一页</button>" +
+        '<span class="gh-pagination-page muted">第 ' +
+        esc(String(pg)) +
+        " / " +
+        esc(String(Math.max(totalPages, 1))) +
+        " 页</span>" +
+        '<button type="button" class="button secondary js-gh-page-next"' +
+        nextDis +
+        ">下一页</button>" +
+        "</div></div>";
+
       mount.innerHTML =
         '<table class="presentation-table"><thead><tr><th>时间</th><th>主题</th><th>模板任务</th><th>生成页数</th><th>产物</th><th>操作</th></tr></thead><tbody>' +
         rows +
-        "</tbody></table>";
+        "</tbody></table>" +
+        pager;
     } catch (e) {
       mount.innerHTML =
         '<p class="error">' + esc(e.message || String(e)) + "</p>";
@@ -102,6 +134,7 @@
     var cleanupBtn = document.getElementById("gh-cleanup-btn");
     function doSearch() {
       _currentQuery = (searchInput && searchInput.value ? searchInput.value : "").trim();
+      _currentPage = 1;
       render();
     }
     if (searchBtn) {
@@ -131,6 +164,18 @@
       });
     }
     wrap.addEventListener("click", function (ev) {
+      var prev = ev.target.closest(".js-gh-page-prev");
+      if (prev && !prev.disabled) {
+        _currentPage = Math.max(1, _currentPage - 1);
+        render();
+        return;
+      }
+      var next = ev.target.closest(".js-gh-page-next");
+      if (next && !next.disabled) {
+        _currentPage = _currentPage + 1;
+        render();
+        return;
+      }
       var del = ev.target.closest(".js-gh-del");
       if (del) {
         var id = del.getAttribute("data-id");

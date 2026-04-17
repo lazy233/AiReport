@@ -2917,6 +2917,41 @@ summary::-webkit-details-marker {
   color: var(--primary-hover, #1d4ed8);
 }
 
+.gh-pagination {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px 16px;
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
+}
+
+.gh-pagination-meta {
+  font-size: 13px;
+}
+
+.gh-pagination-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 12px;
+}
+
+.gh-pagination-page {
+  font-size: 13px;
+  font-weight: 600;
+  min-width: 7em;
+  text-align: center;
+}
+
+.gh-pagination .button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  transform: none;
+}
+
 .presentation-display-name-row {
   display: flex;
   flex-wrap: wrap;
