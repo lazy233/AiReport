@@ -98,6 +98,35 @@
     }
   }
 
+  /**
+   * Word 生成页目前仅支持一种报告类型（word_table_fill）；若库中仅此一条，进入页面时自动选中。
+   */
+  async function applyDefaultWordReportTemplate(form) {
+    if (!form) return;
+    if (window.__generateWorkspaceTab !== "word") return;
+    var el = form.querySelector("#gen-chapter-template-id");
+    if (!el) return;
+    if ((el.value || "").trim()) return;
+    try {
+      var res = await fetch("/api/chapter-templates");
+      var data = await res.json();
+      if (!res.ok || !data.ok || !Array.isArray(data.items)) return;
+      var wordItems = data.items.filter(function (it) {
+        return String(it.templateCode || "").trim() === WORD_REPORT_TEMPLATE_CODE;
+      });
+      if (wordItems.length !== 1) return;
+      var found = wordItems[0];
+      if (!found.id) return;
+      await pickChapterTemplate(
+        String(found.id),
+        (found.name || "").trim() || "Word 表格回填",
+        WORD_REPORT_TEMPLATE_CODE,
+      );
+    } catch (e) {
+      /* 静默失败，用户可手动选择 */
+    }
+  }
+
   async function pickChapterTemplate(id, primary, forcedTemplateCode) {
     var form = getForm();
     if (!form || !id) return false;
@@ -441,6 +470,7 @@
   window.PptApp = window.PptApp || {};
   window.PptApp.syncGenerateRefPicksUi = syncRefPicksUi;
   window.PptApp.applyDefaultChapterTemplate = applyDefaultChapterTemplate;
+  window.PptApp.applyDefaultWordReportTemplate = applyDefaultWordReportTemplate;
   window.PptApp.pickChapterTemplate = pickChapterTemplate;
   window.PptApp.restoreGenerateRefPicks = restoreGenerateRefPicks;
   window.PptApp.getGenerateMode = function () {

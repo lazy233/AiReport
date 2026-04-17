@@ -224,6 +224,15 @@
         await window.PptApp.applyDefaultChapterTemplate(form);
       }
       if (
+        isWordWorkspace &&
+        form &&
+        window.PptApp &&
+        typeof window.PptApp.applyDefaultWordReportTemplate === "function" &&
+        !skipDefaultChapter
+      ) {
+        await window.PptApp.applyDefaultWordReportTemplate(form);
+      }
+      if (
         form &&
         window.PptApp &&
         typeof window.PptApp.setGenerateMode === "function"
