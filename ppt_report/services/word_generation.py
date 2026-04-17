@@ -23,6 +23,47 @@ _LABEL_ONLY_COLON_RE = re.compile(r"^\s*([^:：]{1,80})\s*[:：]\s*$")
 # 宽松：标签内可含冒号以外的任意首段，值段至少 1 字（避免把「对接顾问/BD：」判错）
 _KV_RELAXED_RE = re.compile(r"^(.+?)[:：]\s*(.+)\s*$")
 
+# 大模型若仅输出这些，视为未提供有效信息；不得用来覆盖成段模板正文
+_TRIVIAL_LLM_OUTPUT = frozenset(
+    {
+        "",
+        "—",
+        "–",
+        "-",
+        "－",
+        "/",
+        "／",
+        "N/A",
+        "n/a",
+        "无",
+        "暂无",
+        "待定",
+        "…",
+        "...",
+        "——",
+    },
+)
+
+
+def _is_structured_template_block(text: str) -> bool:
+    """首行起为多行说明/编号列表/长段正文的单元格，整格不得被模型用占位符覆盖。"""
+    s = (text or "").strip()
+    if "\n" not in s and "\r" not in s:
+        return False
+    lines = [ln for ln in re.split(r"\r?\n", s) if ln is not None]
+    if len(lines) < 2:
+        return False
+    rest = "\n".join(lines[1:]).strip()
+    if len(rest) < 8:
+        return False
+    if re.search(r"(?m)^\s*(?:[\d一二三四五六七八九十]+[\.\、．\)）]|[\*•●○▪])\s*\S", rest):
+        return True
+    if re.search(r"(?m)^\s*[(（]?\d+[）)]", rest):
+        return True
+    if len(rest) >= 40:
+        return True
+    return False
+
 
 def _normalize_key(s: str) -> str:
     return re.sub(r"[\s_:\-：]", "", str(s or "").strip().lower())
@@ -260,13 +301,91 @@ def _deterministic_cell_text(text: str, values: dict[str, str], aliases: dict[st
     return _replace_kv_lines(t, values, aliases)
 
 
-# 模板左格仅文字、右格为 / 或空时常用行（无冒号版本）
+# 结单报告模板：仅此五行「左标签 | 右数值」——第二格允许整格写入；其余单元格一律在原文上拼接/补全冒号后，不整格覆盖。
+_SPECIAL_STAT_FULL_VALUE_ROW_MARKERS = frozenset(
+    {
+        _normalize_key("包课课时总统计"),
+        _normalize_key("课程次数"),
+        _normalize_key("课程总时长"),
+        _normalize_key("平均每节课时长"),
+        _normalize_key("最终分数"),
+    },
+)
+
+# 模板左格仅文字、右格为 / 或空时常用行（无冒号版本）——仅与上方五行联动
 _TWO_COL_LEFT_LABEL_KEYS: tuple[tuple[str, str], ...] = (
     ("包课课时总统计", "totalHours"),
     ("课程次数", "class_count"),
     ("课程总时长", "total_duration"),
     ("平均每节课时长", "avg_duration"),
+    ("最终分数", "final_score"),
 )
+
+
+def _table_left_first_line_marker(table: Any, ri: int) -> str:
+    try:
+        t0 = (table.cell(ri, 0).text or "").strip().split("\n")[0].strip()
+    except (ValueError, IndexError, AttributeError):
+        return ""
+    t0 = re.sub(r"[：:/／\s]+$", "", t0).strip()
+    return _normalize_key(t0)
+
+
+def _is_special_stat_value_second_column(table: Any, ri: int, ci: int) -> bool:
+    """双列表仅「包课五行」的右格（col_index==1）允许整格写入模型结果。"""
+    try:
+        if len(table.columns) < 2 or ci != 1:
+            return False
+    except (TypeError, ValueError, AttributeError):
+        return False
+    return _table_left_first_line_marker(table, ri) in _SPECIAL_STAT_FULL_VALUE_ROW_MARKERS
+
+
+def _merge_non_special_llm(original: str, updated: str) -> str:
+    """非上述五行右格时：在原文基础上合并，单行仅「标签：」时在冒号后接值，禁止用「—」盖掉整块模板。"""
+    o_raw = original or ""
+    u_st = (updated or "").strip()
+    if not u_st:
+        return o_raw
+    if u_st == (o_raw.strip()):
+        return o_raw
+    if (o_raw.strip()) and (o_raw.strip() in u_st):
+        return updated or ""
+    if _reject_llm_template_destroying_update(o_raw, updated or ""):
+        return o_raw
+    first = o_raw.split("\n", 1)[0].strip()
+    rest = o_raw.split("\n", 1)[1] if "\n" in o_raw else ""
+    if not rest.strip() and _LABEL_ONLY_COLON_RE.match(first):
+        m = _LABEL_ONLY_COLON_RE.match(first)
+        lab = (m.group(1) or "").strip()
+        sep = "：" if "：" in first else ":"
+        if u_st in _TRIVIAL_LLM_OUTPUT:
+            return o_raw
+        if u_st.startswith(lab) or (lab in u_st[: min(len(u_st), 120)] and sep in u_st[: min(len(u_st), 120)]):
+            return updated or ""
+        return f"{lab}{sep}{u_st}"
+    if not rest.strip():
+        m_kv = _KV_LINE_RE.match(first)
+        if m_kv and (m_kv.group(2) or "").strip():
+            if o_raw.strip() in (updated or ""):
+                return updated or ""
+            u_first = (updated or "").split("\n", 1)[0].strip()
+            um = _KV_LINE_RE.match(u_first)
+            if (
+                um
+                and _normalize_key(um.group(1)) == _normalize_key(m_kv.group(1))
+            ):
+                return updated or ""
+            if u_st in _TRIVIAL_LLM_OUTPUT:
+                return o_raw
+            return o_raw
+    if _is_structured_template_block(o_raw):
+        return o_raw
+    if u_st in _TRIVIAL_LLM_OUTPUT:
+        return o_raw
+    if not _should_allow_llm_cell_update(o_raw):
+        return o_raw
+    return updated or ""
 
 
 def _plain_two_col_map() -> dict[str, str]:
@@ -281,13 +400,18 @@ def _right_is_placeholder(s: str) -> bool:
 
 
 def _cell_suggest_llm_infer(text: str) -> bool:
-    """空单元格、整格仅为占位符、或仅有「标签：」无值时，提示大模型结合档案推理填写。"""
+    """空单元格、整格仅为占位符、或仅有单行「标签：」无值时，提示大模型结合档案推理填写。
+    多行且首行后已有成段正文的，不得标为 infer（避免整格交给模型改成「—」）。"""
     s = (text or "").strip()
     if not s:
         return True
     if _right_is_placeholder(s):
         return True
-    fl = (s.split("\n")[0] or "").strip()
+    raw_lines = re.split(r"\r?\n", s)
+    fl = (raw_lines[0] or "").strip()
+    rest = "\n".join(raw_lines[1:]).strip() if len(raw_lines) > 1 else ""
+    if len(raw_lines) > 1 and len(rest) >= 6:
+        return False
     if _LABEL_ONLY_COLON_RE.match(fl):
         return True
     return False
@@ -333,6 +457,9 @@ def _fix_two_column_rows(doc: Document, values: dict[str, str], aliases: dict[st
             lt_raw = left.text or ""
             rt_raw = right.text or ""
             first_line = (lt_raw.split("\n")[0] or "").strip()
+
+            if _table_left_first_line_marker(table, ri) not in _SPECIAL_STAT_FULL_VALUE_ROW_MARKERS:
+                continue
 
             kv = _match_kv_first_line(first_line)
             if kv:
@@ -418,6 +545,27 @@ def _fix_two_column_rows_until_stable(
     return total
 
 
+def _reject_llm_template_destroying_update(original: str, updated: str) -> bool:
+    """若应用后会用「—」等占位粗暴替换模板里已有成段文字，则拒绝本次改写。"""
+    o, u = (original or "").strip(), (updated or "").strip()
+    if o == u:
+        return False
+    if not o:
+        return False
+    u_norm = u.strip()
+    trivial = u_norm in _TRIVIAL_LLM_OUTPUT
+    # 成段模板被换成横杠等
+    if len(o) >= 20 and trivial and u_norm not in ("",):
+        return True
+    if len(o) >= 28 and len(u_norm) <= 3 and trivial:
+        return True
+    if _is_structured_template_block(o) and (trivial or len(u_norm) < len(o) * 0.25):
+        return True
+    if not _cell_suggest_llm_infer(o) and trivial and len(o) >= 10:
+        return True
+    return False
+
+
 def _should_allow_llm_cell_update(original: str) -> bool:
     """
     为 True 时允许用大模型返回覆盖整格原文。
@@ -428,6 +576,8 @@ def _should_allow_llm_cell_update(original: str) -> bool:
     st = o.strip()
     if not st:
         return True
+    if _is_structured_template_block(o):
+        return False
     if _right_is_placeholder(st):
         return True
     first = o.split("\n", 1)[0].strip()
@@ -484,12 +634,12 @@ def _llm_fill_table_cells(
         "若单元格含 {{key}} 占位符，优先按 key 替换。"
         "若单元格是“字段名:原值/字段名：原值”，可根据字段名替换。"
         "禁止改写无占位符、无「标签:」结构且仅为短固定词的单元格（例如单独一行人名、课程名）；此类必须原样返回 original_text。"
-        "表格同一行若存在左右两列（table_cells 中相同 table_index、row_index 下 col_index 为 0 与 1）："
-        "左格只保留「标签：」标签本身或单独标题，具体数字与正文必须写在右格（col_index 较大的单元格）；"
-        "禁止把「课程次数：1」这类「标签+值」整段只写在左格而右格为空。"
+        "表格同一行若左右两列且左格为以下五种之一（包课课时总统计、课程次数、课程总时长、平均每节课时长、最终分数）："
+        "左格仅标签，数值或正文必须写在右格（第二列），右格可整格覆盖占位符。"
+        "其余所有单元格（含其它双列行）必须在 original_text 上拼接或仅补全「标签：」后的值，禁止整格用「—」替换整块带标签模板。"
         "转案日期、专业、委托产品、对接顾问等：若 value_map 无键名，可从 profile.basic / 全量 student_record 按常见语义推断并填写；勿留空。"
-        "若 table_cells[].suggest_infer 为 true：表示该格为空、仅占位或仅有「标签：」无值，你必须结合 student_record / profile / value_map 推理可填内容；"
-        "能从其他字段合理推出则填写具体文字，确实无依据时可写「—」或一两字说明，不要留空占位。"
+        "若 table_cells[].suggest_infer 为 true：该格为空、仅占位或仅单行「标签：」待填，可结合档案推理；"
+        "suggest_infer 为 false，或原文已含多行列表/长说明时：final_text 必须与 original_text 完全一致，禁止用「—」等占位符整格替换模板正文。"
         "不要输出解释，只输出 JSON。"
     )
     payload = {
@@ -515,7 +665,7 @@ def _llm_fill_table_cells(
         "6) 对无冒号、无{{}}的短行固定文案（如模板里已写好的教服老师姓名）必须保持原样；\n"
         "7) 双列表格同行左右两格分工：左标签、右数值或说明；\n"
         "8) 尽量补全转案日期、专业、委托产品、对接顾问等有迹可循的字段；\n"
-        "9) 凡 suggest_infer 为 true 的单元格必须输出推理后的 final_text（不得与原文一样是空或仅「/」）。\n\n"
+        "9) suggest_infer 为 true 且原文无多行正文时，尽量填写有效内容；其余单元格若非填空所需，必须原样返回 original_text。\n\n"
         f"输入数据：{json.dumps(payload, ensure_ascii=False)}"
     )
     response = requests.post(
@@ -627,6 +777,10 @@ def fill_word_table_for_student(
                     and not _should_allow_llm_cell_update(original)
                 ):
                     updated = original
+                if _reject_llm_template_destroying_update(original, updated):
+                    updated = original
+                if not _is_special_stat_value_second_column(table, r_idx, c_idx):
+                    updated = _merge_non_special_llm(original, updated)
                 if updated != original:
                     touched_cells += 1
                     placeholder_hits += len(_PLACEHOLDER_RE.findall(original))
