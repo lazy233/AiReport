@@ -272,8 +272,15 @@ def _replace_placeholders(text: str, values: dict[str, str]) -> str:
     return _PLACEHOLDER_RE.sub(_sub, text or "")
 
 
-def _replace_kv_lines(text: str, values: dict[str, str], aliases: dict[str, str]) -> str:
-    """逐行匹配「标签: 值」；若标签能映射到 value_map 且该字段有值，则替换冒号后的内容。"""
+def _replace_kv_lines(
+    text: str,
+    values: dict[str, str],
+    aliases: dict[str, str],
+    *,
+    skip_key_names: frozenset[str] | None = None,
+) -> str:
+    """逐行匹配「标签: 值」；若标签能映射到 value_map 且该字段有值，则替换冒号后的内容。
+    skip_key_names：对应字段在双列统计左格不写值，强制保留为「标签：」单行（数值由右格写入）。"""
     lines = (text or "").split("\n")
     out: list[str] = []
     for line in lines:
@@ -287,6 +294,10 @@ def _replace_kv_lines(text: str, values: dict[str, str], aliases: dict[str, str]
         if not key_name:
             out.append(line)
             continue
+        if skip_key_names and key_name in skip_key_names:
+            sep = "：" if "：" in line else ":"
+            out.append(f"{label.strip()}{sep}")
+            continue
         new_val = str(values.get(key_name, "") or "").strip()
         if not new_val:
             out.append(line)
@@ -296,9 +307,15 @@ def _replace_kv_lines(text: str, values: dict[str, str], aliases: dict[str, str]
     return "\n".join(out)
 
 
-def _deterministic_cell_text(text: str, values: dict[str, str], aliases: dict[str, str]) -> str:
+def _deterministic_cell_text(
+    text: str,
+    values: dict[str, str],
+    aliases: dict[str, str],
+    *,
+    skip_key_names: frozenset[str] | None = None,
+) -> str:
     t = _replace_placeholders(text or "", values)
-    return _replace_kv_lines(t, values, aliases)
+    return _replace_kv_lines(t, values, aliases, skip_key_names=skip_key_names)
 
 
 # 结单报告模板：仅此五行「左标签 | 右数值」——第二格允许整格写入；其余单元格一律在原文上拼接/补全冒号后，不整格覆盖。
@@ -311,6 +328,15 @@ _SPECIAL_STAT_FULL_VALUE_ROW_MARKERS = frozenset(
         _normalize_key("最终分数"),
     },
 )
+
+# 五行左列对应的 value_map 键；左格禁止写入该键的数值（仅右格）
+_SPECIAL_ROW_MARKER_TO_VALUE_KEY: dict[str, str] = {
+    _normalize_key("包课课时总统计"): "totalHours",
+    _normalize_key("课程次数"): "class_count",
+    _normalize_key("课程总时长"): "total_duration",
+    _normalize_key("平均每节课时长"): "avg_duration",
+    _normalize_key("最终分数"): "final_score",
+}
 
 # 模板左格仅文字、右格为 / 或空时常用行（无冒号版本）——仅与上方五行联动
 _TWO_COL_LEFT_LABEL_KEYS: tuple[tuple[str, str], ...] = (
@@ -341,8 +367,32 @@ def _is_special_stat_value_second_column(table: Any, ri: int, ci: int) -> bool:
     return _table_left_first_line_marker(table, ri) in _SPECIAL_STAT_FULL_VALUE_ROW_MARKERS
 
 
-def _merge_non_special_llm(original: str, updated: str) -> str:
+def _is_special_stat_left_label_column(table: Any, ri: int, ci: int) -> bool:
+    """双列表五行统计的左格（col_index==0）仅保留标签，数值只写在右格。"""
+    try:
+        if len(table.columns) < 2 or ci != 0:
+            return False
+    except (TypeError, ValueError, AttributeError):
+        return False
+    return _table_left_first_line_marker(table, ri) in _SPECIAL_STAT_FULL_VALUE_ROW_MARKERS
+
+
+def _merge_non_special_llm(
+    original: str,
+    updated: str,
+    *,
+    table: Any | None = None,
+    row_index: int | None = None,
+    col_index: int | None = None,
+) -> str:
     """非上述五行右格时：在原文基础上合并，单行仅「标签：」时在冒号后接值，禁止用「—」盖掉整块模板。"""
+    if (
+        table is not None
+        and row_index is not None
+        and col_index is not None
+        and _is_special_stat_left_label_column(table, row_index, col_index)
+    ):
+        return original or ""
     o_raw = original or ""
     u_st = (updated or "").strip()
     if not u_st:
@@ -525,6 +575,22 @@ def _fix_two_column_rows(doc: Document, values: dict[str, str], aliases: dict[st
                         else:
                             set_table_cell_text_preserve_style(right, nv2)
                         changed += 1
+                        continue
+
+            if not merged_same:
+                lt_cleanup = left.text or ""
+                rt_cleanup = right.text or ""
+                fl_cleanup = (lt_cleanup.split("\n")[0] or "").strip()
+                kv_dup = _match_kv_first_line(fl_cleanup)
+                if kv_dup and kv_dup[1] and not _right_is_placeholder(rt_cleanup):
+                    sep = "：" if "：" in fl_cleanup else ":"
+                    lab = kv_dup[0].strip()
+                    lines = lt_cleanup.split("\n")
+                    lines[0] = f"{lab}{sep}"
+                    new_lt = "\n".join(lines).strip()
+                    if new_lt != lt_cleanup.strip():
+                        set_table_cell_text_preserve_style(left, new_lt)
+                        changed += 1
     return changed
 
 
@@ -635,7 +701,7 @@ def _llm_fill_table_cells(
         "若单元格是“字段名:原值/字段名：原值”，可根据字段名替换。"
         "禁止改写无占位符、无「标签:」结构且仅为短固定词的单元格（例如单独一行人名、课程名）；此类必须原样返回 original_text。"
         "表格同一行若左右两列且左格为以下五种之一（包课课时总统计、课程次数、课程总时长、平均每节课时长、最终分数）："
-        "左格仅标签，数值或正文必须写在右格（第二列），右格可整格覆盖占位符。"
+        "左格（第一列）只能保留标题或「标签：」，禁止在左格写数字或统计结果；数值只可写在右格（第二列），右格可整格覆盖占位符。"
         "其余所有单元格（含其它双列行）必须在 original_text 上拼接或仅补全「标签：」后的值，禁止整格用「—」替换整块带标签模板。"
         "转案日期、专业、委托产品、对接顾问等：若 value_map 无键名，可从 profile.basic / 全量 student_record 按常见语义推断并填写；勿留空。"
         "若 table_cells[].suggest_infer 为 true：该格为空、仅占位或仅单行「标签：」待填，可结合档案推理；"
@@ -742,7 +808,13 @@ def fill_word_table_for_student(
         for r_idx, row in enumerate(table.rows):
             for c_idx, cell in enumerate(row.cells):
                 orig = cell.text or ""
-                new_t = _deterministic_cell_text(orig, values, aliases)
+                skip_kv: frozenset[str] | None = None
+                if _is_special_stat_left_label_column(table, r_idx, c_idx):
+                    mk_det = _table_left_first_line_marker(table, r_idx)
+                    sk = _SPECIAL_ROW_MARKER_TO_VALUE_KEY.get(mk_det)
+                    if sk:
+                        skip_kv = frozenset({sk})
+                new_t = _deterministic_cell_text(orig, values, aliases, skip_key_names=skip_kv)
                 if new_t != orig:
                     set_table_cell_text_preserve_style(cell, new_t)
                     deterministic_cells += 1
@@ -780,7 +852,13 @@ def fill_word_table_for_student(
                 if _reject_llm_template_destroying_update(original, updated):
                     updated = original
                 if not _is_special_stat_value_second_column(table, r_idx, c_idx):
-                    updated = _merge_non_special_llm(original, updated)
+                    updated = _merge_non_special_llm(
+                        original,
+                        updated,
+                        table=table,
+                        row_index=r_idx,
+                        col_index=c_idx,
+                    )
                 if updated != original:
                     touched_cells += 1
                     placeholder_hits += len(_PLACEHOLDER_RE.findall(original))
