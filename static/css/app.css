@@ -1261,15 +1261,6 @@ pre {
   margin: 0;
 }
 
-.generate-demo-banner {
-  margin: 0 0 12px;
-  padding: 10px 12px;
-  border-radius: 8px;
-  background: rgba(0, 0, 0, 0.04);
-  border: 1px solid var(--line);
-  font-size: 13px;
-}
-
 #ai-generate-submit.gen-submit--invalid {
   opacity: 0.55;
   cursor: not-allowed;
