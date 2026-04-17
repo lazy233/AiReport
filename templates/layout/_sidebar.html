@@ -22,7 +22,7 @@
     </div>
   </div>
   <nav class="app-nav" aria-label="页面导航">
-    <p class="app-nav-kicker">菜单</p>
+    <p class="app-nav-kicker" id="app-nav-kicker-menu">菜单</p>
     <a
       class="app-nav-link{% if request.endpoint == 'web.overview' %} is-active{% endif %}"
       href="{{ url_for('web.overview') }}"
@@ -84,6 +84,7 @@
       <span class="app-nav-label">学生数据管理</span>
     </a>
     <a
+      id="app-nav-link-chapter-templates"
       class="app-nav-link{% if request.endpoint in (
         'web.chapter_templates_list',
         'web.chapter_template_new',
@@ -91,6 +92,7 @@
         'web.chapter_template_edit',
       ) %} is-active{% endif %}"
       href="{{ url_for('web.chapter_templates_list') }}"
+      hidden
     >
       <span class="app-nav-icon" aria-hidden="true">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
@@ -130,4 +132,40 @@
       </svg>
     </button>
   </div>
+  <script>
+    (function () {
+      var kicker = document.getElementById("app-nav-kicker-menu");
+      var link = document.getElementById("app-nav-link-chapter-templates");
+      if (!kicker || !link) return;
+      var STORAGE_KEY = "lumist-nav-report-types";
+      try {
+        if (link.hasAttribute("hidden") && localStorage.getItem(STORAGE_KEY) === "1") {
+          link.removeAttribute("hidden");
+        }
+      } catch (e) {}
+      kicker.addEventListener("click", function () {
+        var vis = !link.hasAttribute("hidden");
+        if (vis) {
+          link.setAttribute("hidden", "");
+          try {
+            localStorage.removeItem(STORAGE_KEY);
+          } catch (e) {}
+        } else {
+          link.removeAttribute("hidden");
+          try {
+            localStorage.setItem(STORAGE_KEY, "1");
+          } catch (e) {}
+        }
+      });
+      kicker.addEventListener("keydown", function (e) {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          kicker.click();
+        }
+      });
+      kicker.setAttribute("role", "button");
+      kicker.setAttribute("tabindex", "0");
+      kicker.style.cursor = "pointer";
+    })();
+  </script>
 </aside>

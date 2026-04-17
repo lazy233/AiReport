@@ -127,6 +127,7 @@ def _build_student_value_map(record: dict[str, Any]) -> tuple[dict[str, str], di
         "老师": "teacherName",
         "规划老师": "plannerTeacher",
         "教服老师": "advisorTeacher",
+        "负责教服老师": "advisorTeacher",
         "产品": "product",
         "年级/入学时间": "gradeIntake",
         "擅长科目": "strength_subjects",
@@ -191,6 +192,65 @@ def _build_student_value_map(record: dict[str, Any]) -> tuple[dict[str, str], di
     return values, aliases
 
 
+def _replace_placeholders(text: str, values: dict[str, str]) -> str:
+    """将 {{fieldName}} 替换为 value_map 中的值。"""
+
+    def _sub(m: re.Match[str]) -> str:
+        key = (m.group(1) or "").strip()
+        return str(values.get(key, "") or "")
+
+    return _PLACEHOLDER_RE.sub(_sub, text or "")
+
+
+def _replace_kv_lines(text: str, values: dict[str, str], aliases: dict[str, str]) -> str:
+    """逐行匹配「标签: 值」；若标签能映射到 value_map 且该字段有值，则替换冒号后的内容。"""
+    lines = (text or "").split("\n")
+    out: list[str] = []
+    for line in lines:
+        m = _KV_LINE_RE.match(line)
+        if not m:
+            out.append(line)
+            continue
+        label = m.group(1) or ""
+        nk = _normalize_key(label)
+        key_name = aliases.get(nk)
+        if not key_name:
+            out.append(line)
+            continue
+        new_val = str(values.get(key_name, "") or "").strip()
+        if not new_val:
+            out.append(line)
+            continue
+        sep = "：" if "：" in line else ":"
+        out.append(f"{label.strip()}{sep}{new_val}")
+    return "\n".join(out)
+
+
+def _deterministic_cell_text(text: str, values: dict[str, str], aliases: dict[str, str]) -> str:
+    t = _replace_placeholders(text or "", values)
+    return _replace_kv_lines(t, values, aliases)
+
+
+def _should_allow_llm_cell_update(original: str) -> bool:
+    """
+    仅在这些情况下允许用大模型结果覆盖整格原文：
+    - 含 {{placeholder}}；
+    - 或首行符合「标签: 值」结构（便于按学生数据改写）；
+    - 或较长/多段叙述（需模型润色或补全）。
+
+    无冒号、无占位符的短固定文案（如单独一行「李老师」）禁止整格覆盖，避免模型误写。
+    """
+    o = original or ""
+    if "{{" in o:
+        return True
+    first = o.split("\n", 1)[0].strip()
+    if _KV_LINE_RE.match(first):
+        return True
+    if len(o) > 320 or o.count("\n") >= 2:
+        return True
+    return False
+
+
 def _extract_table_cells(doc: Document) -> tuple[list[dict[str, Any]], int]:
     cells: list[dict[str, Any]] = []
     table_count = 0
@@ -230,6 +290,7 @@ def _llm_fill_table_cells(
         "若单元格原文非空，final_text 不得为空字符串（禁止误清空）。"
         "若单元格含 {{key}} 占位符，优先按 key 替换。"
         "若单元格是“字段名:原值/字段名：原值”，可根据字段名替换。"
+        "禁止改写无占位符、无「标签:」结构且仅为短固定词的单元格（例如单独一行人名、课程名）；此类必须原样返回 original_text。"
         "不要输出解释，只输出 JSON。"
     )
     payload = {
@@ -251,7 +312,8 @@ def _llm_fill_table_cells(
         "2) 每个 cell_id 仅出现一次；\n"
         "3) final_text 为最终写回文本；\n"
         "4) 若不应修改，final_text 返回 original_text；\n"
-        "5) 全文保持中文风格，不新增无关内容。\n\n"
+        "5) 全文保持中文风格，不新增无关内容；\n"
+        "6) 对无冒号、无{{}}的短行固定文案（如模板里已写好的教服老师姓名）必须保持原样。\n\n"
         f"输入数据：{json.dumps(payload, ensure_ascii=False)}"
     )
     response = requests.post(
@@ -323,6 +385,18 @@ def fill_word_table_for_student(
     if table_count <= 0:
         raise ValueError("Word 模板中未检测到表格，无法执行表格回填。")
 
+    deterministic_cells = 0
+    for t_idx, table in enumerate(doc.tables):
+        for r_idx, row in enumerate(table.rows):
+            for c_idx, cell in enumerate(row.cells):
+                orig = cell.text or ""
+                new_t = _deterministic_cell_text(orig, values, aliases)
+                if new_t != orig:
+                    cell.text = new_t
+                    deterministic_cells += 1
+
+    cells_meta, table_count = _extract_table_cells(doc)
+
     llm_updates = _llm_fill_table_cells(
         student_record=rec,
         values=values,
@@ -342,6 +416,13 @@ def fill_word_table_for_student(
                 # 禁止用空串覆盖原有非空内容，避免模型误返回 final_text="" 导致整格被清空
                 if (original or "").strip() and not str(updated or "").strip():
                     updated = original
+                # 禁止模型用另一段非空文字覆盖「短固定模板」（无占位符、非 KV 首行、非长文）
+                if (
+                    str(updated or "").strip()
+                    and str(updated or "").strip() != str(original or "").strip()
+                    and not _should_allow_llm_cell_update(original)
+                ):
+                    updated = original
                 if updated != original:
                     touched_cells += 1
                     placeholder_hits += len(_PLACEHOLDER_RE.findall(original))
@@ -360,6 +441,7 @@ def fill_word_table_for_student(
         "student_data_id": sid,
         "output_kind": "docx",
         "table_count": table_count,
+        "deterministic_cells": deterministic_cells,
         "touched_cells": touched_cells,
         "placeholder_hits": placeholder_hits,
         "kv_rewrite_hits": kv_rewrite_hits,

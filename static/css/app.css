@@ -203,6 +203,10 @@ body.app-body {
   padding: 12px 10px 8px;
 }
 
+.app-nav-link[hidden] {
+  display: none !important;
+}
+
 .app-nav-link {
   position: relative;
   display: flex;
@@ -2935,6 +2939,15 @@ summary::-webkit-details-marker {
   padding: 10px 12px;
   font: inherit;
   background: #fff;
+  color: var(--text);
+  /* 与 .select-inline 相同：深色主题下 color-scheme:dark 会令白底输入框文字过浅 */
+  color-scheme: light;
+}
+
+.ct-input::placeholder,
+.ct-textarea::placeholder {
+  color: var(--subtle);
+  opacity: 1;
 }
 
 .ct-textarea {

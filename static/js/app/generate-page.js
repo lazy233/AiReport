@@ -65,8 +65,11 @@
       if (!it.task_id) return;
       var o = document.createElement("option");
       o.value = it.task_id;
+      var base = it.file_name || it.task_id;
       var label =
-        (it.file_name || it.task_id) + " · " + (it.slide_count != null ? it.slide_count + " 页" : "");
+        mode === "word"
+          ? base
+          : base + " · " + (it.slide_count != null ? it.slide_count + " 页" : "");
       o.textContent = label.length > 80 ? label.slice(0, 77) + "…" : label;
       sel.appendChild(o);
     });
@@ -184,12 +187,13 @@
         var meta = await ctx.json();
         if (hint && meta.ok) {
           hint.hidden = false;
-          var msg =
-            "已选择：" +
-            (meta.file_name || tid) +
-            "（" +
-            (meta.slide_count != null ? meta.slide_count + " 页" : "? 页") +
-            "）";
+          var msg = "已选择：" + (meta.file_name || tid);
+          if (genParam !== "word") {
+            msg +=
+              "（" +
+              (meta.slide_count != null ? meta.slide_count + " 页" : "? 页") +
+              "）";
+          }
           if (meta.has_template === false) {
             msg += "。警告：服务器上未找到对应 .pptx 模板文件，生成后可能无法导出。";
           }
