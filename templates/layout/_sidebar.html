@@ -1,6 +1,7 @@
-{# 主导航：扁平菜单 #}
-<aside class="app-sidebar" aria-label="主导航">
+{# 主导航：扁平菜单；可折叠为仅图标栏 #}
+<aside class="app-sidebar" id="app-sidebar" aria-label="主导航">
   <div class="app-sidebar-brand">
+    <div class="app-sidebar-brand-leading">
     <div class="app-sidebar-brand-mark" aria-hidden="true">
       <svg viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
         <defs>
@@ -20,6 +21,22 @@
       <strong>报告生成平台</strong>
       <span>PPT Auto Generator</span>
     </div>
+    </div>
+    <button
+      type="button"
+      class="app-sidebar-toggle"
+      id="app-sidebar-toggle"
+      aria-expanded="true"
+      aria-controls="app-sidebar"
+      title="收起侧栏"
+    >
+      <svg class="app-sidebar-toggle-icon app-sidebar-toggle-icon--collapse" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M15 18l-6-6 6-6" />
+      </svg>
+      <svg class="app-sidebar-toggle-icon app-sidebar-toggle-icon--expand" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M9 18l6-6-6-6" />
+      </svg>
+    </button>
   </div>
   <nav class="app-nav" aria-label="页面导航">
     <p class="app-nav-kicker" id="app-nav-kicker-menu">菜单</p>
@@ -134,6 +151,45 @@
   </div>
   <script>
     (function () {
+      var COLLAPSE_KEY = "lumist-sidebar-collapsed";
+      var html = document.documentElement;
+      var toggle = document.getElementById("app-sidebar-toggle");
+      function applySidebarCollapsed(collapsed) {
+        html.classList.toggle("sidebar-collapsed", collapsed);
+        if (toggle) {
+          toggle.setAttribute("aria-expanded", collapsed ? "false" : "true");
+          toggle.setAttribute("aria-label", collapsed ? "展开侧栏" : "收起侧栏");
+          toggle.setAttribute("title", toggle.getAttribute("aria-label"));
+        }
+        document.querySelectorAll(".app-nav-link .app-nav-label").forEach(function (lab) {
+          var a = lab.closest("a.app-nav-link");
+          if (!a) return;
+          if (collapsed) {
+            a.setAttribute("title", (lab.textContent || "").trim());
+          } else {
+            a.removeAttribute("title");
+          }
+        });
+        try {
+          if (collapsed) localStorage.setItem(COLLAPSE_KEY, "1");
+          else localStorage.removeItem(COLLAPSE_KEY);
+        } catch (e) {}
+      }
+      if (toggle) {
+        toggle.addEventListener("click", function () {
+          applySidebarCollapsed(!html.classList.contains("sidebar-collapsed"));
+        });
+        if (html.classList.contains("sidebar-collapsed")) {
+          toggle.setAttribute("aria-expanded", "false");
+          toggle.setAttribute("aria-label", "展开侧栏");
+          toggle.setAttribute("title", "展开侧栏");
+          document.querySelectorAll(".app-nav-link .app-nav-label").forEach(function (lab) {
+            var a = lab.closest("a.app-nav-link");
+            if (a) a.setAttribute("title", (lab.textContent || "").trim());
+          });
+        }
+      }
+
       var kicker = document.getElementById("app-nav-kicker-menu");
       var link = document.getElementById("app-nav-link-chapter-templates");
       if (!kicker || !link) return;

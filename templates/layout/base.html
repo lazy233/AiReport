@@ -17,6 +17,15 @@
       } catch (e) {}
     })();
   </script>
+  <script>
+    (function () {
+      try {
+        if (localStorage.getItem("lumist-sidebar-collapsed") === "1") {
+          document.documentElement.classList.add("sidebar-collapsed");
+        }
+      } catch (e) {}
+    })();
+  </script>
   <link rel="icon" href="{{ url_for('static', filename='favicon.svg') }}" type="image/svg+xml" />
   <link rel="apple-touch-icon" href="{{ url_for('static', filename='favicon.svg') }}" />
   <link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}" />
