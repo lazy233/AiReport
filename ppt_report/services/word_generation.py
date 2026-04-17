@@ -14,9 +14,12 @@ from ppt_report import config
 from ppt_report.models import db
 from ppt_report.services.chapter_ref_images import is_safe_task_id
 from ppt_report.services.llm_json import extract_json_from_text
+from ppt_report.services.word_document import set_table_cell_text_preserve_style
 
 _PLACEHOLDER_RE = re.compile(r"\{\{\s*([a-zA-Z0-9_.\-]+)\s*\}\}")
-_KV_LINE_RE = re.compile(r"^\s*([^:：]{1,24})\s*[:：]\s*(.*?)\s*$")
+# 标签列可较长（如「平均每节课时长」「Classin 沟通频次」）
+_KV_LINE_RE = re.compile(r"^\s*([^:：]{1,80})\s*[:：]\s*(.*?)\s*$")
+_LABEL_ONLY_COLON_RE = re.compile(r"^\s*([^:：]{1,80})\s*[:：]\s*$")
 
 
 def _normalize_key(s: str) -> str:
@@ -55,8 +58,19 @@ def _build_student_value_map(record: dict[str, Any]) -> tuple[dict[str, str], di
         "plannerTeacher": str(basic.get("plannerTeacher") or "").strip(),
         "advisorTeacher": str(basic.get("advisorTeacher") or "").strip(),
         "gradeIntake": str(basic.get("gradeIntake") or "").strip(),
+        "className": str(basic.get("className") or "").strip(),
         "product": str(basic.get("product") or "").strip(),
+        "major": _first_nonempty(basic, "major", "majorName")
+        or str(learning.get("majorDirection") or learning.get("major") or "").strip(),
         "majorDirection": str(learning.get("majorDirection") or "").strip(),
+        "transferDate": _first_nonempty(
+            basic,
+            "transferDate",
+            "caseTransferDate",
+            "recordTransferDate",
+            "switchCaseDate",
+        )
+        or str(basic.get("serviceStart") or basic.get("serviceStartDate") or "").strip(),
         "goalSchool": str(learning.get("goalSchool") or "").strip(),
         "goalMajor": str(learning.get("goalMajor") or "").strip(),
         "strength_subjects": _first_nonempty(
@@ -128,7 +142,16 @@ def _build_student_value_map(record: dict[str, Any]) -> tuple[dict[str, str], di
         "规划老师": "plannerTeacher",
         "教服老师": "advisorTeacher",
         "负责教服老师": "advisorTeacher",
+        "专业": "major",
+        "转案日期": "transferDate",
+        "委托产品": "product",
+        "班级": "className",
         "产品": "product",
+        "对接顾问": "plannerTeacher",
+        "对接顾问/BD": "plannerTeacher",
+        "Classin沟通频次": "communication",
+        "Classin 沟通频次": "communication",
+        "包课课时总统计": "totalHours",
         "年级/入学时间": "gradeIntake",
         "擅长科目": "strength_subjects",
         "语言/国际成绩": "scores",
@@ -231,6 +254,92 @@ def _deterministic_cell_text(text: str, values: dict[str, str], aliases: dict[st
     return _replace_kv_lines(t, values, aliases)
 
 
+# 模板左格仅文字、右格为 / 或空时常用行（无冒号版本）
+_TWO_COL_LEFT_LABEL_KEYS: tuple[tuple[str, str], ...] = (
+    ("包课课时总统计", "totalHours"),
+    ("课程次数", "class_count"),
+    ("课程总时长", "total_duration"),
+    ("平均每节课时长", "avg_duration"),
+)
+
+
+def _plain_two_col_map() -> dict[str, str]:
+    return {_normalize_key(lab): vkey for lab, vkey in _TWO_COL_LEFT_LABEL_KEYS}
+
+
+def _right_is_placeholder(s: str) -> bool:
+    t = (s or "").strip()
+    if not t:
+        return True
+    return t in ("/", "／", "—", "-", "...", "…", "–")
+
+
+def _fix_two_column_rows(doc: Document, values: dict[str, str], aliases: dict[str, str]) -> int:
+    """
+    将误写在左格的「标签：值」拆成左「标签：」+ 右「值」；
+    左格仅有「标签：」时把 value_map 填到右格；
+    左格为无冒号标题且右格为占位时，按别名/包课行映射填右格。
+    """
+    plain = _plain_two_col_map()
+    changed = 0
+    for table in doc.tables:
+        for row in table.rows:
+            if len(row.cells) < 2:
+                continue
+            left, right = row.cells[0], row.cells[1]
+            if left._tc is right._tc:
+                continue
+            lt_raw = left.text or ""
+            rt_raw = right.text or ""
+            first_line = (lt_raw.split("\n")[0] or "").strip()
+
+            m = _KV_LINE_RE.match(first_line)
+            if m:
+                lab = (m.group(1) or "").strip()
+                val = (m.group(2) or "").strip()
+                if val and _right_is_placeholder(rt_raw):
+                    sep = "：" if "：" in first_line else ":"
+                    lines = lt_raw.split("\n")
+                    lines[0] = f"{lab}{sep}"
+                    set_table_cell_text_preserve_style(left, "\n".join(lines))
+                    set_table_cell_text_preserve_style(right, val)
+                    changed += 1
+                    continue
+
+            m2 = _LABEL_ONLY_COLON_RE.match(first_line)
+            if m2 and _right_is_placeholder(rt_raw):
+                nk = _normalize_key(m2.group(1))
+                key_name = aliases.get(nk)
+                if key_name:
+                    nv = str(values.get(key_name, "") or "").strip()
+                    if nv:
+                        set_table_cell_text_preserve_style(right, nv)
+                        changed += 1
+                        continue
+
+            if (
+                first_line
+                and ":" not in first_line
+                and "：" not in first_line
+                and _right_is_placeholder(rt_raw)
+            ):
+                nk2 = _normalize_key(first_line)
+                vk = plain.get(nk2)
+                if vk:
+                    nv = str(values.get(vk, "") or "").strip()
+                    if nv:
+                        set_table_cell_text_preserve_style(right, nv)
+                        changed += 1
+                        continue
+                key_name2 = aliases.get(nk2)
+                if key_name2:
+                    nv2 = str(values.get(key_name2, "") or "").strip()
+                    if nv2:
+                        set_table_cell_text_preserve_style(right, nv2)
+                        changed += 1
+    return changed
+
+
 def _should_allow_llm_cell_update(original: str) -> bool:
     """
     仅在这些情况下允许用大模型结果覆盖整格原文：
@@ -291,6 +400,10 @@ def _llm_fill_table_cells(
         "若单元格含 {{key}} 占位符，优先按 key 替换。"
         "若单元格是“字段名:原值/字段名：原值”，可根据字段名替换。"
         "禁止改写无占位符、无「标签:」结构且仅为短固定词的单元格（例如单独一行人名、课程名）；此类必须原样返回 original_text。"
+        "表格同一行若存在左右两列（table_cells 中相同 table_index、row_index 下 col_index 为 0 与 1）："
+        "左格只保留「标签：」标签本身或单独标题，具体数字与正文必须写在右格（col_index 较大的单元格）；"
+        "禁止把「课程次数：1」这类「标签+值」整段只写在左格而右格为空。"
+        "转案日期、专业、委托产品、对接顾问等：若 value_map 无键名，可从 profile.basic / 全量 student_record 按常见语义推断并填写；勿留空。"
         "不要输出解释，只输出 JSON。"
     )
     payload = {
@@ -313,7 +426,9 @@ def _llm_fill_table_cells(
         "3) final_text 为最终写回文本；\n"
         "4) 若不应修改，final_text 返回 original_text；\n"
         "5) 全文保持中文风格，不新增无关内容；\n"
-        "6) 对无冒号、无{{}}的短行固定文案（如模板里已写好的教服老师姓名）必须保持原样。\n\n"
+        "6) 对无冒号、无{{}}的短行固定文案（如模板里已写好的教服老师姓名）必须保持原样；\n"
+        "7) 双列表格同行左右两格分工：左标签、右数值或说明；\n"
+        "8) 尽量补全转案日期、专业、委托产品、对接顾问等有迹可循的字段。\n\n"
         f"输入数据：{json.dumps(payload, ensure_ascii=False)}"
     )
     response = requests.post(
@@ -392,8 +507,10 @@ def fill_word_table_for_student(
                 orig = cell.text or ""
                 new_t = _deterministic_cell_text(orig, values, aliases)
                 if new_t != orig:
-                    cell.text = new_t
+                    set_table_cell_text_preserve_style(cell, new_t)
                     deterministic_cells += 1
+
+    two_column_row_fixes = _fix_two_column_rows(doc, values, aliases)
 
     cells_meta, table_count = _extract_table_cells(doc)
 
@@ -427,7 +544,9 @@ def fill_word_table_for_student(
                     touched_cells += 1
                     placeholder_hits += len(_PLACEHOLDER_RE.findall(original))
                     kv_rewrite_hits += 1 if _KV_LINE_RE.match(original or "") else 0
-                    cell.text = updated
+                    set_table_cell_text_preserve_style(cell, updated)
+
+    two_column_row_fixes += _fix_two_column_rows(doc, values, aliases)
 
     if output_path is None:
         out = config.FILLED_EXPORT_DIR / f"{tid}_filled.docx"
@@ -445,6 +564,7 @@ def fill_word_table_for_student(
         "touched_cells": touched_cells,
         "placeholder_hits": placeholder_hits,
         "kv_rewrite_hits": kv_rewrite_hits,
+        "two_column_row_fixes": two_column_row_fixes,
         "download_path": str(out),
     }
 

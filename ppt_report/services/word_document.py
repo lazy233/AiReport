@@ -1,6 +1,7 @@
 """Word 文档解析：提取标题、段落、表格为结构化 sections。"""
 from __future__ import annotations
 
+from copy import deepcopy
 from pathlib import Path
 from typing import Any
 
@@ -8,6 +9,48 @@ from docx import Document
 from docx.document import Document as _DocType
 from docx.table import Table
 from docx.text.paragraph import Paragraph
+
+
+def set_table_cell_text_preserve_style(cell: Any, text: str) -> None:
+    """
+    写入表格单元格文本并尽量保留模板中的字体与段落格式。
+
+    直接使用 cell.text = ... 会清空单元格并按文档默认样式重建段落，导致原模板字体（含中文 East Asia）
+    与加粗等丢失；这里在改写前复制首个 rPr / 首段 pPr 的 OOXML，写回后再套用到新 run/段上。
+    """
+    rpr_template = None
+    ppr_template = None
+    if cell.paragraphs:
+        pp0 = cell.paragraphs[0]._element.pPr
+        if pp0 is not None:
+            ppr_template = deepcopy(pp0)
+    for para in cell.paragraphs:
+        for run in para.runs:
+            rp = run._element.rPr
+            if rp is not None:
+                rpr_template = deepcopy(rp)
+                break
+        if rpr_template is not None:
+            break
+
+    cell.text = text
+
+    if ppr_template is not None:
+        for para in cell.paragraphs:
+            pel = para._element
+            old = pel.pPr
+            if old is not None:
+                pel.remove(old)
+            pel.insert(0, deepcopy(ppr_template))
+
+    if rpr_template is not None:
+        for para in cell.paragraphs:
+            for run in para.runs:
+                rel = run._element
+                old = rel.rPr
+                if old is not None:
+                    rel.remove(old)
+                rel.insert(0, deepcopy(rpr_template))
 
 
 def _iter_block_items(doc: _DocType):
