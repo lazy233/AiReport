@@ -6,9 +6,6 @@
     <input type="hidden" name="chapter_template_id" id="gen-chapter-template-id" value="" />
     <input type="hidden" name="student_data_id" id="gen-student-data-id" value="" />
     <input type="hidden" name="chapter_ref_json" id="gen-chapter-ref-json" value="" />
-    <p class="muted" data-word-mode-note hidden>
-      已进入 Word 生成模式：将按所选学生数据回填 Word 表格，不执行章节解析。
-    </p>
     <input type="hidden" name="topic" value="{{ topic or '' }}" />
     <div class="gen-ref-toolbar gen-ref-toolbar--solo" id="gen-ref-toolbar-chapter">
       <button type="button" class="button gen-btn-pick gen-btn-pick--template" data-gen-picker="chapter-template">
@@ -173,9 +170,7 @@
         </div>
       </details>
     {% else %}
-      {% if is_word_template %}
-        <p class="muted">当前选择的是 Word 模板。选择「Word 表格回填」报告类型后，可直接按学生数据生成。</p>
-      {% else %}
+      {% if not is_word_template %}
         <p class="error">未产生章节分组，请确认已成功解析且至少有一页内容。</p>
       {% endif %}
     {% endif %}
